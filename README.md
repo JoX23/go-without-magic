@@ -14,6 +14,8 @@ A production-ready Go microservice template following clean architecture princip
 - **Graceful Shutdown** - Safe service termination with cleanup
 - **Docker** - Dockerfile and Docker Compose ready for containerization
 - **CI/CD** - GitHub Actions workflows for automated testing and building
+- **✨ NEW: Middleware System** - Composable middleware pattern inspired by GoKit
+- **✨ NEW: Resilience Patterns** - Circuit breaker & rate limiting (from Go-Zero best practices)
 
 ## 🛠️ Prerequisites
 
@@ -198,6 +200,51 @@ This microservice is **production-grade** and thoroughly tested for concurrent w
 
 For detailed analysis of concurrency safety, see [CONCURRENCY_AUDIT.md](CONCURRENCY_AUDIT.md).  
 For deployment checklist, see [DEPLOYMENT_READY.md](DEPLOYMENT_READY.md).
+
+## 🎯 Advanced Features: Middleware & Resilience (v1.2.0)
+
+**Go Without Magic** now includes battle-tested patterns from GoKit and Go-Zero:
+
+### Middleware System (Inspired by GoKit)
+Composable middleware for clean request handling:
+
+```go
+import "github.com/JoX23/go-without-magic/internal/middleware"
+
+// Chain multiple middlewares
+handler := middleware.Chain(
+    middleware.RequestID(),
+    middleware.Logging(logger),
+    middleware.RecoveryPanic(logger),
+)(userHandler)
+```
+
+**Built-in Middlewares:**
+- **RequestID** - Generates unique IDs for tracing
+- **Logging** - Structured logging with duration
+- **RecoveryPanic** - Gracefully recover from panics
+
+### Resilience Patterns (Inspired by Go-Zero)
+Production resilience for distributed systems:
+
+```go
+import "github.com/JoX23/go-without-magic/internal/resilience"
+
+// Circuit Breaker: Fail fast when service degrades
+cb := resilience.NewCircuitBreaker(5, 30*time.Second)
+err := cb.Call(func() error { return callService() })
+
+// Rate Limiting: Smooth request distribution
+rl := resilience.NewRateLimiter(100) // 100 req/sec
+if !rl.Allow() { /* Too many requests */ }
+```
+
+**Implemented Patterns:**
+- **Circuit Breaker** - States: Closed → Open → HalfOpen (prevents cascading failures)
+- **Rate Limiting** - Token bucket algorithm (thread-safe)
+
+---
+
 ## 📊 Comparison with Popular Go Frameworks
 
 **Go Without Magic** is designed as a minimal, explicit template focused on Clean Architecture principles. Here's how it compares to popular Go microservice frameworks:
@@ -212,8 +259,8 @@ For deployment checklist, see [DEPLOYMENT_READY.md](DEPLOYMENT_READY.md).
 | **HTTP Support** | ✅ Native (std lib) | ✅ Yes (pluggable) | ✅ Yes | ✅ Yes (optimized) |
 | **gRPC Support** | ❌ No | ✅ Yes (pluggable) | ✅ Yes (out-of-box) | ✅ Yes |
 | **Code Generation** | ❌ Manual | ❌ No | ❌ No | ✅ Yes (goctl) |
-| **Built-in Resilience** | ❌ No (DIY) | ✅ Yes | ✅ Yes | ✅ Yes (circuit breaker, rate limiting) |
-| **Middleware Support** | ✅ Yes (HTTP handlers) | ✅ Yes | ✅ Yes (plug-able) | ✅ Yes |
+| **Built-in Resilience** | ✅ Yes (circuit breaker, rate limiting) | ✅ Yes | ✅ Yes | ✅ Yes (circuit breaker, rate limiting) |
+| **Middleware Support** | ✅ Yes (composable) | ✅ Yes | ✅ Yes (plug-able) | ✅ Yes |
 | **Built-in Observability** | ⚠️ Partial (logging only) | ⚠️ Minimal | ✅ Yes (tracing, metrics, logs) | ✅ Yes |
 | **Database Abstraction** | ✅ Repository pattern | ✅ Flexible | ✅ Yes | ✅ Yes |
 | **Production Ready** | ✅ Yes (race-tested) | ✅ Yes | ✅ Yes | ✅ Yes (battle-tested) |
