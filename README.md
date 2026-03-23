@@ -245,6 +245,38 @@ if !rl.Allow() { /* Too many requests */ }
 
 ---
 
+## 📊 Feature Matrix: Implementation Status
+
+### Current State (v1.2.0)
+
+| Feature | Status | Phase | Source |
+|---------|--------|-------|--------|
+| Middleware System | ✅ Complete | Phase 1 | GoKit |
+| Circuit Breaker | ✅ Complete | Phase 2 | Go-Zero |
+| Rate Limiting | ✅ Complete | Phase 2 | Go-Zero |
+| OpenTelemetry Tracing | ⏳ Planned | Phase 3 | Kratos |
+| Prometheus Metrics | ⏳ Planned | Phase 3 | Kratos |
+| Automatic Validation | ⏳ Planned | Phase 4 | Go-Zero |
+| Consistent Error Handling | ⏳ Planned | Phase 4 | Go-Zero |
+| OpenAPI Auto-generation | ⏳ Planned | Phase 5 | Go-Zero |
+| gRPC Support (Optional) | ⏳ Planned | Phase 6 | Kratos |
+
+### Implementation Roadmap
+
+**✅ Completed (v1.2.0):**
+- Phase 1: Composable middleware system
+- Phase 2: Resilience patterns (circuit breaker + rate limiting)
+
+**⏳ Planned (v1.3.0+):**
+- Phase 3: Enhanced observability (OpenTelemetry + Prometheus)
+- Phase 4: Validation & error handling
+- Phase 5: OpenAPI documentation generation
+- Phase 6: Optional gRPC support (enterprise feature)
+
+See [BEST_PRACTICES_INTEGRATION.md](BEST_PRACTICES_INTEGRATION.md) for detailed specifications of all planned phases.
+
+---
+
 ## 📊 Comparison with Popular Go Frameworks
 
 **Go Without Magic** is designed as a minimal, explicit template focused on Clean Architecture principles. Here's how it compares to popular Go microservice frameworks:
