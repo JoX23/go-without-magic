@@ -1,0 +1,26 @@
+service:
+  name: "go-without-magic"
+  version: "1.3.0"
+  environment: "development"
+
+server:
+  http_port: 8080
+  grpc_port: 9090
+  shutdown_timeout: "30s"
+  read_timeout: "10s"
+  write_timeout: "10s"
+
+database:
+  dsn: "postgres://user:password@localhost:5432/go_without_magic"
+  max_open_conns: 25
+  max_idle_conns: 25
+
+observability:
+  log_level: "info"
+  tracing:
+    enabled: true
+    service_name: "go-without-magic"
+    service_version: "1.3.0"
+  metrics:
+    enabled: true
+    path: "/metrics"

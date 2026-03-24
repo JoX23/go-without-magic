@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +15,7 @@ import (
 	grpcservice "github.com/JoX23/go-without-magic/internal/grpc"
 	"github.com/JoX23/go-without-magic/internal/grpc/pb"
 	httphandler "github.com/JoX23/go-without-magic/internal/handler/http"
+	"github.com/JoX23/go-without-magic/internal/middleware"
 	"github.com/JoX23/go-without-magic/internal/observability"
 	"github.com/JoX23/go-without-magic/internal/repository/memory"
 	"github.com/JoX23/go-without-magic/internal/service"
@@ -32,7 +34,7 @@ func main() {
 // y testear el arranque sin llamar a os.Exit directamente.
 func run() error {
 	// ── 1. Configuración ───────────────────────────────────────────────
-	cfg, err := config.Load("internal/config/config.yaml")
+	cfg, err := config.Load("config.yaml")
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
@@ -47,13 +49,37 @@ func run() error {
 	}
 	defer logger.Sync() //nolint:errcheck
 
+	// ── 3. Observability (Tracing & Metrics) ──────────────────────────
+	var tracerProvider *observability.TracerProvider
+	var metrics *observability.Metrics
+	var spanProcessor *observability.SpanProcessor
+
+	if cfg.Observability.Tracing.Enabled {
+		tracerProvider, err = observability.NewTracerProvider(
+			cfg.Observability.Tracing.ServiceName,
+			cfg.Observability.Tracing.ServiceVersion,
+		)
+		if err != nil {
+			return fmt.Errorf("creating tracer provider: %w", err)
+		}
+		defer tracerProvider.Shutdown(context.Background()) //nolint:errcheck
+
+		spanProcessor = observability.NewSpanProcessor()
+		logger.Info("tracing enabled", zap.String("service", cfg.Observability.Tracing.ServiceName))
+	}
+
+	if cfg.Observability.Metrics.Enabled {
+		metrics = observability.NewMetrics()
+		logger.Info("metrics enabled", zap.String("path", cfg.Observability.Metrics.Path))
+	}
+
 	logger.Info("starting service",
 		zap.String("name", cfg.Service.Name),
 		zap.String("version", cfg.Service.Version),
 		zap.String("environment", cfg.Service.Environment),
 	)
 
-	// ── 3. Repositorio ─────────────────────────────────────────────────
+	// ── 4. Repositorio ─────────────────────────────────────────────────
 	// En local usamos memoria; para producción cambia por postgres.New(cfg.Database)
 	repo := memory.NewUserRepository()
 
@@ -64,10 +90,10 @@ func run() error {
 	// }
 	// defer repo.Close()
 
-	// ── 4. Capa de servicio ────────────────────────────────────────────
+	// ── 5. Capa de servicio ────────────────────────────────────────────
 	userSvc := service.NewUserService(repo, logger)
 
-	// ── 5. HTTP Handler ────────────────────────────────────────────────
+	// ── 6. HTTP Handler ────────────────────────────────────────────────
 	userHandler := httphandler.NewUserHandler(userSvc, logger)
 
 	mux := http.NewServeMux()
@@ -79,7 +105,35 @@ func run() error {
 	// Sin checkers reales en modo memoria — agregar repo cuando uses postgres
 	mux.Handle("/healthz", health.NewHandler())
 
-	// ── 6. Servidor HTTP ───────────────────────────────────────────────
+	// Rutas de observabilidad
+	if cfg.Observability.Metrics.Enabled {
+		mux.Handle(cfg.Observability.Metrics.Path, metrics.Handler())
+	}
+
+	// ── 7. Middlewares ─────────────────────────────────────────────────
+	var handler http.Handler = mux
+
+	// Aplicar middlewares en orden (de afuera hacia adentro)
+	middlewares := []middleware.Middleware{
+		middleware.RecoveryPanic(logger),
+		middleware.RequestID(),
+		middleware.Logging(logger),
+	}
+
+	// Agregar tracing si está habilitado
+	if cfg.Observability.Tracing.Enabled {
+		tracer := tracerProvider.Tracer("http")
+		middlewares = append(middlewares, middleware.Tracing(tracer, spanProcessor, metrics))
+	}
+
+	// Agregar métricas de negocio si están habilitadas
+	if cfg.Observability.Metrics.Enabled {
+		middlewares = append(middlewares, middleware.BusinessMetrics(metrics, spanProcessor))
+	}
+
+	handler = middleware.Chain(middlewares...)(handler)
+
+	// ── 8. Servidor HTTP ───────────────────────────────────────────────
 	addr := fmt.Sprintf(":%d", cfg.Server.HTTPPort)
 
 	// Chequear que el puerto esté disponible ANTES de crear el servidor
@@ -91,7 +145,7 @@ func run() error {
 
 	httpServer := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      handler, // Usar handler con middlewares aplicados
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
@@ -122,7 +176,7 @@ func run() error {
 		}()
 	}
 
-	// ── 7. Graceful Shutdown ───────────────────────────────────────────
+	// ── 9. Graceful Shutdown ───────────────────────────────────────────
 	shutdownMgr := shutdown.NewManager(cfg.Server.ShutdownTimeout, logger).
 		Register("http", httpServer)
 	if grpcServer != nil {

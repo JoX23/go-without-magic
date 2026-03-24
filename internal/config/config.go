@@ -38,7 +38,20 @@ type DatabaseConfig struct {
 }
 
 type ObservabilityConfig struct {
-	LogLevel string `mapstructure:"log_level"`
+	LogLevel      string `mapstructure:"log_level"`
+	Tracing       TracingConfig       `mapstructure:"tracing"`
+	Metrics       MetricsConfig       `mapstructure:"metrics"`
+}
+
+type TracingConfig struct {
+	Enabled       bool   `mapstructure:"enabled"`
+	ServiceName   string `mapstructure:"service_name"`
+	ServiceVersion string `mapstructure:"service_version"`
+}
+
+type MetricsConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Path    string `mapstructure:"path"` // e.g., "/metrics"
 }
 
 // Load carga configuración desde archivo YAML + variables de entorno.
