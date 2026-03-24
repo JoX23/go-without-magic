@@ -83,7 +83,7 @@ header "1. HEALTH CHECK"
 
 step "GET /healthz — servicio listo"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/healthz")
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "healthz responde"
@@ -97,7 +97,7 @@ step "POST /users — crear usuario Alice"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/users" \
   -H "Content-Type: application/json" \
   -d '{"email": "alice@example.com", "name": "Alice Smith"}')
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 201 "$STATUS" "crear usuario"
@@ -111,7 +111,7 @@ step "POST /users — crear segundo usuario Bob"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/users" \
   -H "Content-Type: application/json" \
   -d '{"email": "bob@example.com", "name": "Bob Johnson"}')
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 201 "$STATUS" "crear segundo usuario"
@@ -122,7 +122,7 @@ step "POST /users — email duplicado (debe rechazarse)"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/users" \
   -H "Content-Type: application/json" \
   -d '{"email": "alice@example.com", "name": "Alice Duplicada"}')
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 409 "$STATUS" "duplicado rechazado con 409 Conflict"
@@ -131,14 +131,14 @@ step "POST /users — datos inválidos (email vacío)"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/users" \
   -H "Content-Type: application/json" \
   -d '{"email": "", "name": "Sin email"}')
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 400 "$STATUS" "email vacío rechazado con 400 Bad Request"
 
 step "GET /users/${ALICE_ID} — buscar Alice por ID"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/users/${ALICE_ID}")
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "buscar por ID"
@@ -147,7 +147,7 @@ assert_field "$BODY" ".email" "alice@example.com"
 
 step "GET /users — listar todos los usuarios"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/users")
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "listar usuarios"
@@ -172,7 +172,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/products" \
     "name": "MacBook Pro 14",
     "price": 1999.99
   }')
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 201 "$STATUS" "crear producto"
@@ -190,7 +190,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/products" \
     "name": "Keychron K2 Pro",
     "price": 119.99
   }')
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 201 "$STATUS" "crear segundo producto"
@@ -211,7 +211,7 @@ assert_status 409 "$STATUS" "SKU duplicado rechazado con 409 Conflict"
 
 step "GET /products/${LAPTOP_ID} — buscar laptop por ID"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/products/${LAPTOP_ID}")
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "buscar producto por ID"
@@ -219,7 +219,7 @@ assert_field "$BODY" ".sku" "LAPTOP-001"
 
 step "GET /products — listar todos los productos"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/products")
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "listar productos"
@@ -232,7 +232,7 @@ header "4. OBSERVABILIDAD"
 
 step "GET /metrics — métricas Prometheus"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/metrics")
-BODY=$(echo "$RESPONSE" | head -n -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "endpoint de métricas disponible"
