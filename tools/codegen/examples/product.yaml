@@ -1,0 +1,24 @@
+version: "1"
+name: Product
+profile: full
+
+fields:
+  - name: Sku
+    type: string
+    unique: true
+    validate: "required"
+  - name: Name
+    type: string
+    validate: "required,min=3"
+  - name: Price
+    type: float64
+    validate: "required,min=0"
+  - name: Description
+    type: string
+    optional: true
+  - name: Status
+    type: enum
+    values: ["draft", "published", "archived"]
+
+lookup_keys:
+  - field: Sku

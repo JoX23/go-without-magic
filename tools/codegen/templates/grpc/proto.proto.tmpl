@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package grpc;
+
+option go_package = "{{.Module}}/internal/grpc/pb";
+
+message {{.Entity.Name}} {
+  string id = 1;
+{{- range .Entity.Fields}}
+  {{.ProtoType}} {{.NameSnake}} = {{.ProtoNum}};
+{{- end}}
+  string created_at = {{add (len .Entity.Fields) 2}};
+}
+
+message Create{{.Entity.Name}}Request {
+{{- range $i, $f := .Entity.Fields}}{{if and (not $f.IsOptional) (not $f.IsEnum)}}
+  {{$f.ProtoType}} {{$f.NameSnake}} = {{add $i 1}};
+{{- end}}{{end}}
+}
+
+message Create{{.Entity.Name}}Response {
+  {{.Entity.Name}} {{.Entity.NameLower}} = 1;
+}
+
+message Get{{.Entity.Name}}Request {
+  string id = 1;
+}
+
+message Get{{.Entity.Name}}Response {
+  {{.Entity.Name}} {{.Entity.NameLower}} = 1;
+}
+
+message List{{.Entity.Name}}sRequest {}
+
+message List{{.Entity.Name}}sResponse {
+  repeated {{.Entity.Name}} {{.Entity.NamePlural}} = 1;
+}
+
+service {{.Entity.Name}}Service {
+  rpc Create{{.Entity.Name}}(Create{{.Entity.Name}}Request) returns (Create{{.Entity.Name}}Response);
+  rpc Get{{.Entity.Name}}(Get{{.Entity.Name}}Request) returns (Get{{.Entity.Name}}Response);
+  rpc List{{.Entity.Name}}s(List{{.Entity.Name}}sRequest) returns (List{{.Entity.Name}}sResponse);
+}

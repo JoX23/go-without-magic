@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package grpc;
+
+option go_package = "github.com/JoX23/go-without-magic/internal/grpc/pb";
+
+message Product {
+  string id = 1;
+  string sku = 2;
+  string name = 3;
+  double price = 4;
+  string description = 5;
+  string status = 6;
+  string created_at = 7;
+}
+
+message CreateProductRequest {
+  string sku = 1;
+  string name = 2;
+  double price = 3;
+}
+
+message CreateProductResponse {
+  Product product = 1;
+}
+
+message GetProductRequest {
+  string id = 1;
+}
+
+message GetProductResponse {
+  Product product = 1;
+}
+
+message ListProductsRequest {}
+
+message ListProductsResponse {
+  repeated Product products = 1;
+}
+
+service ProductService {
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+}

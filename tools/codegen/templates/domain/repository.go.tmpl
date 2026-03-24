@@ -1,0 +1,35 @@
+package domain
+
+import "context"
+
+// {{.Entity.Name}}Repository define el contrato del puerto de salida.
+//
+// El dominio define la interfaz; la implementación vive en
+// internal/repository/. Esto es el patrón Port & Adapter.
+//
+// REGLA: esta interfaz NO importa nada fuera del paquete domain.
+type {{.Entity.Name}}Repository interface {
+	// CreateIfNotExists crea la entidad si no existe un duplicado.
+	// Retorna Err{{.Entity.Name}}Duplicated si ya existe.
+	//
+	// GARANTÍA: Thread-safe. Operación atómica.
+	CreateIfNotExists(ctx context.Context, e *{{.Entity.Name}}) error
+
+	// Save crea o actualiza la entidad (incondicionalmente).
+	Save(ctx context.Context, e *{{.Entity.Name}}) error
+
+	// FindByID busca por ID.
+	// Retorna Err{{.Entity.Name}}NotFound si no existe.
+	FindByID(ctx context.Context, id string) (*{{.Entity.Name}}, error)
+{{range .Entity.LookupKeys}}
+	// {{.MethodName}} busca por {{.Field.Name}}.
+{{- if .IsUnique}}
+	// Retorna Err{{$.Entity.Name}}NotFound si no existe.
+	{{.MethodName}}(ctx context.Context, {{.Field.NameLower}} {{.Field.GoBaseType}}) (*{{$.Entity.Name}}, error)
+{{- else}}
+	{{.MethodName}}(ctx context.Context, {{.Field.NameLower}} {{.Field.GoBaseType}}) ([]*{{$.Entity.Name}}, error)
+{{- end}}
+{{end}}
+	// List retorna todos los registros.
+	List(ctx context.Context) ([]*{{.Entity.Name}}, error)
+}

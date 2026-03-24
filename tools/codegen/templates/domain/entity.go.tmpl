@@ -1,0 +1,54 @@
+package domain
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+{{range .Entity.Fields}}{{if .IsEnum}}{{$field := .}}
+// {{$field.EnumTypeName}} representa los valores posibles del campo {{$field.Name}}.
+type {{$field.EnumTypeName}} string
+
+const (
+{{- range $field.EnumValues}}
+	{{$.Entity.Name}}{{$field.Name}}{{. | toPascal}} {{$field.EnumTypeName}} = {{. | quote}}
+{{- end}}
+)
+{{end}}{{end}}
+// {{.Entity.Name}} es la entidad central del dominio.
+// NO depende de ningún framework, ORM ni capa de transporte.
+type {{.Entity.Name}} struct {
+	ID        uuid.UUID
+{{- range .Entity.Fields}}
+	{{.Name}}  {{.GoType}}
+{{- end}}
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// New{{.Entity.Name}} es el único constructor válido.
+// Garantiza que la entidad siempre nace en estado válido.
+func New{{.Entity.Name}}({{range $i, $f := .Entity.ConstructorFields}}{{if $i}}, {{end}}{{$f.NameLower}} {{$f.GoType}}{{end}}) (*{{.Entity.Name}}, error) {
+{{- range .Entity.ConstructorFields}}
+	if {{.NameLower}} == {{if eq .GoBaseType "string"}}""{{else}}0{{end}} {
+		return nil, ErrInvalid{{$.Entity.Name}}{{.Name}}
+	}
+{{- end}}
+
+	now := time.Now().UTC()
+
+	return &{{.Entity.Name}}{
+		ID:        uuid.New(),
+{{- range .Entity.Fields}}
+{{- if .IsOptional}}
+		{{.Name}}:  nil,
+{{- else if .IsEnum}}
+		{{.Name}}:  {{.EnumTypeName}}({{index .EnumValues 0 | quote}}),
+{{- else}}
+		{{.Name}}:  {{.NameLower}},
+{{- end}}
+{{- end}}
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil
+}

@@ -1,0 +1,28 @@
+
+────────────────────────────────────────────────────────────
+  HINT — Agrega esto manualmente a cmd/server/main.go
+────────────────────────────────────────────────────────────
+
+// Imports:
+{{- if .Generate.MemoryRepository}}
+{{.Entity.NameLower}}Repo "{{.Module}}/internal/repository/memory"
+{{- end}}
+{{.Entity.NameLower}}Svc "{{.Module}}/internal/service"
+{{.Entity.NameLower}}Handler "{{.Module}}/internal/handler/http"
+
+// Wiring (dentro de la función run()):
+{{.Entity.NameLower}}Repo := memory.New{{.Entity.Name}}Repository()
+{{.Entity.NameLower}}Svc  := service.New{{.Entity.Name}}Service({{.Entity.NameLower}}Repo, logger)
+{{.Entity.NameLower}}Hdlr := handler.New{{.Entity.Name}}Handler({{.Entity.NameLower}}Svc, logger)
+{{.Entity.NameLower}}Hdlr.RegisterRoutes(mux)
+
+────────────────────────────────────────────────────────────
+  HINT — Agrega esto a internal/grpc/error_codes.go
+────────────────────────────────────────────────────────────
+
+// En la función grpcCodeFromDomain() o ToGRPCError(), agrega:
+case errors.Is(err, domain.Err{{.Entity.Name}}NotFound):
+    return codes.NotFound
+case errors.Is(err, domain.Err{{.Entity.Name}}Duplicated):
+    return codes.AlreadyExists
+────────────────────────────────────────────────────────────

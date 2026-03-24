@@ -1,0 +1,111 @@
+package memory
+
+import (
+	"context"
+	"sync"
+
+	"{{.Module}}/internal/domain"
+)
+
+// {{.Entity.Name}}Repository es una implementación en memoria del dominio.
+//
+// Usos:
+//   - Tests unitarios y de integración (sin base de datos real)
+//   - Desarrollo local sin infraestructura
+//
+// Es seguro para uso concurrente (sync.RWMutex).
+type {{.Entity.Name}}Repository struct {
+	mu   sync.RWMutex
+	byID map[string]*domain.{{.Entity.Name}}
+{{- range .Entity.LookupKeys}}
+	{{.MapName}} map[{{.Field.GoBaseType}}]*domain.{{$.Entity.Name}}{{if not .IsUnique}}  // no único: no se indexa en memoria por ahora{{end}}
+{{- end}}
+}
+
+func New{{.Entity.Name}}Repository() *{{.Entity.Name}}Repository {
+	return &{{.Entity.Name}}Repository{
+		byID: make(map[string]*domain.{{.Entity.Name}}),
+{{- range .Entity.LookupKeys}}{{if .IsUnique}}
+		{{.MapName}}: make(map[{{.Field.GoBaseType}}]*domain.{{$.Entity.Name}}),
+{{- end}}{{end}}
+	}
+}
+
+// CreateIfNotExists verifica unicidad y crea de forma ATÓMICA.
+// Retorna Err{{.Entity.Name}}Duplicated si ya existe un duplicado.
+//
+// GARANTÍA DE CONCURRENCIA: Thread-safe, sin ventana entre check y write.
+func (r *{{.Entity.Name}}Repository) CreateIfNotExists(_ context.Context, e *domain.{{.Entity.Name}}) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+{{range .Entity.LookupKeys}}{{if .IsUnique}}
+	if _, exists := r.{{.MapName}}[e.{{.Field.Name}}]; exists {
+		return domain.Err{{$.Entity.Name}}Duplicated
+	}
+{{end}}{{end}}
+	r.byID[e.ID.String()] = e
+{{- range .Entity.LookupKeys}}{{if .IsUnique}}
+	r.{{.MapName}}[e.{{.Field.Name}}] = e
+{{- end}}{{end}}
+
+	return nil
+}
+
+func (r *{{.Entity.Name}}Repository) Save(_ context.Context, e *domain.{{.Entity.Name}}) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.byID[e.ID.String()] = e
+{{- range .Entity.LookupKeys}}{{if .IsUnique}}
+	r.{{.MapName}}[e.{{.Field.Name}}] = e
+{{- end}}{{end}}
+
+	return nil
+}
+
+func (r *{{.Entity.Name}}Repository) FindByID(_ context.Context, id string) (*domain.{{.Entity.Name}}, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	e, ok := r.byID[id]
+	if !ok {
+		return nil, domain.Err{{.Entity.Name}}NotFound
+	}
+	return e, nil
+}
+{{range .Entity.LookupKeys}}
+{{if .IsUnique}}
+func (r *{{$.Entity.Name}}Repository) {{.MethodName}}(_ context.Context, {{.Field.NameLower}} {{.Field.GoBaseType}}) (*domain.{{$.Entity.Name}}, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	e, ok := r.{{.MapName}}[{{.Field.NameLower}}]
+	if !ok {
+		return nil, domain.Err{{$.Entity.Name}}NotFound
+	}
+	return e, nil
+}
+{{else}}
+func (r *{{$.Entity.Name}}Repository) {{.MethodName}}(_ context.Context, {{.Field.NameLower}} {{.Field.GoBaseType}}) ([]*domain.{{$.Entity.Name}}, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []*domain.{{$.Entity.Name}}
+	for _, e := range r.byID {
+		if e.{{.Field.Name}} == {{.Field.GoType}}({{.Field.NameLower}}) {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+{{end}}{{end}}
+func (r *{{.Entity.Name}}Repository) List(_ context.Context) ([]*domain.{{.Entity.Name}}, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	items := make([]*domain.{{.Entity.Name}}, 0, len(r.byID))
+	for _, e := range r.byID {
+		items = append(items, e)
+	}
+	return items, nil
+}

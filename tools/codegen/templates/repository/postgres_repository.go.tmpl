@@ -1,0 +1,160 @@
+package postgres
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"{{.Module}}/internal/config"
+	"{{.Module}}/internal/domain"
+)
+
+type {{.Entity.Name}}Repository struct {
+	pool *pgxpool.Pool
+}
+
+func New{{.Entity.Name}}Repository(cfg config.DatabaseConfig) (*{{.Entity.Name}}Repository, error) {
+	poolCfg, err := pgxpool.ParseConfig(cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("parsing database DSN: %w", err)
+	}
+
+	poolCfg.MaxConns = int32(cfg.MaxOpenConns)
+	poolCfg.MinConns = int32(cfg.MaxIdleConns)
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
+	if err != nil {
+		return nil, fmt.Errorf("creating connection pool: %w", err)
+	}
+
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("pinging database: %w", err)
+	}
+
+	return &{{.Entity.Name}}Repository{pool: pool}, nil
+}
+
+func (r *{{.Entity.Name}}Repository) CreateIfNotExists(ctx context.Context, e *domain.{{.Entity.Name}}) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO {{.Entity.NamePlural}} (id, {{range $i, $f := .Entity.Fields}}{{if $i}}, {{end}}{{$f.NameSnake}}{{end}}, created_at, updated_at)
+		 VALUES ($1, {{range $i, $f := .Entity.Fields}}{{if $i}}, {{end}}${{add $i 2}}{{end}}, ${{add (len .Entity.Fields) 2}}, ${{add (len .Entity.Fields) 3}})`,
+		e.ID.String(), {{range $i, $f := .Entity.Fields}}e.{{$f.Name}}, {{end}}e.CreatedAt, e.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("creating {{.Entity.NameLower}}: %w", err)
+	}
+	return nil
+}
+
+func (r *{{.Entity.Name}}Repository) Save(ctx context.Context, e *domain.{{.Entity.Name}}) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO {{.Entity.NamePlural}} (id, {{range $i, $f := .Entity.Fields}}{{if $i}}, {{end}}{{$f.NameSnake}}{{end}}, created_at, updated_at)
+		 VALUES ($1, {{range $i, $f := .Entity.Fields}}{{if $i}}, {{end}}${{add $i 2}}{{end}}, ${{add (len .Entity.Fields) 2}}, ${{add (len .Entity.Fields) 3}})`,
+		e.ID.String(), {{range $i, $f := .Entity.Fields}}e.{{$f.Name}}, {{end}}e.CreatedAt, e.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("inserting {{.Entity.NameLower}}: %w", err)
+	}
+	return nil
+}
+
+func (r *{{.Entity.Name}}Repository) FindByID(ctx context.Context, id string) (*domain.{{.Entity.Name}}, error) {
+	row := r.pool.QueryRow(ctx,
+		`SELECT id, {{range $i, $f := .Entity.Fields}}{{if $i}}, {{end}}{{$f.NameSnake}}{{end}}, created_at, updated_at
+		 FROM {{.Entity.NamePlural}} WHERE id = $1`,
+		id,
+	)
+	e, err := scan{{.Entity.Name}}(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, domain.Err{{.Entity.Name}}NotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying by id: %w", err)
+	}
+	return e, nil
+}
+{{range .Entity.LookupKeys}}
+func (r *{{$.Entity.Name}}Repository) {{.MethodName}}(ctx context.Context, {{.Field.NameLower}} {{.Field.GoBaseType}}) ({{if .IsUnique}}*domain.{{$.Entity.Name}}{{else}}[]*domain.{{$.Entity.Name}}{{end}}, error) {
+{{- if .IsUnique}}
+	row := r.pool.QueryRow(ctx,
+		`SELECT id, {{range $i, $f := $.Entity.Fields}}{{if $i}}, {{end}}{{$f.NameSnake}}{{end}}, created_at, updated_at
+		 FROM {{$.Entity.NamePlural}} WHERE {{.Field.NameSnake}} = $1`,
+		{{.Field.NameLower}},
+	)
+	e, err := scan{{$.Entity.Name}}(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, domain.Err{{$.Entity.Name}}NotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying by {{.Field.NameSnake}}: %w", err)
+	}
+	return e, nil
+{{- else}}
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, {{range $i, $f := $.Entity.Fields}}{{if $i}}, {{end}}{{$f.NameSnake}}{{end}}, created_at, updated_at
+		 FROM {{$.Entity.NamePlural}} WHERE {{.Field.NameSnake}} = $1`,
+		{{.Field.NameLower}},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("querying by {{.Field.NameSnake}}: %w", err)
+	}
+	defer rows.Close()
+
+	var result []*domain.{{$.Entity.Name}}
+	for rows.Next() {
+		e, err := scan{{$.Entity.Name}}(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning row: %w", err)
+		}
+		result = append(result, e)
+	}
+	return result, rows.Err()
+{{- end}}
+}
+{{end}}
+func (r *{{.Entity.Name}}Repository) List(ctx context.Context) ([]*domain.{{.Entity.Name}}, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, {{range $i, $f := .Entity.Fields}}{{if $i}}, {{end}}{{$f.NameSnake}}{{end}}, created_at, updated_at
+		 FROM {{.Entity.NamePlural}} ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("listing {{.Entity.NamePlural}}: %w", err)
+	}
+	defer rows.Close()
+
+	var items []*domain.{{.Entity.Name}}
+	for rows.Next() {
+		e, err := scan{{.Entity.Name}}(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning row: %w", err)
+		}
+		items = append(items, e)
+	}
+	return items, rows.Err()
+}
+
+type {{.Entity.NameLower}}Scanner interface {
+	Scan(dest ...any) error
+}
+
+func scan{{.Entity.Name}}(s {{.Entity.NameLower}}Scanner) (*domain.{{.Entity.Name}}, error) {
+	var e domain.{{.Entity.Name}}
+	var idStr string
+
+	if err := s.Scan(&idStr, {{range .Entity.Fields}}&e.{{.Name}}, {{end}}&e.CreatedAt, &e.UpdatedAt); err != nil {
+		return nil, err
+	}
+
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return nil, fmt.Errorf("parsing uuid: %w", err)
+	}
+	e.ID = id
+
+	return &e, nil
+}

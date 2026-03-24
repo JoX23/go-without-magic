@@ -1,0 +1,77 @@
+//go:build ignore
+// +build ignore
+// NOTE: Este archivo requiere que internal/grpc/proto/{{.Entity.NameLower}}.proto
+// haya sido compilado con protoc primero. Elimina las líneas build ignore
+// una vez que el pb package esté disponible.
+
+package grpc
+
+import (
+	"context"
+
+	"go.uber.org/zap"
+
+	"{{.Module}}/internal/domain"
+	"{{.Module}}/internal/grpc/pb"
+	"{{.Module}}/internal/service"
+)
+
+// {{.Entity.Name}}ServiceServerImpl implementa pb.{{.Entity.Name}}ServiceServer
+// usando la capa de servicio de dominio existente.
+type {{.Entity.Name}}ServiceServerImpl struct {
+	svc    *service.{{.Entity.Name}}Service
+	logger *zap.Logger
+}
+
+func New{{.Entity.Name}}ServiceServer(svc *service.{{.Entity.Name}}Service, logger *zap.Logger) *{{.Entity.Name}}ServiceServerImpl {
+	return &{{.Entity.Name}}ServiceServerImpl{svc: svc, logger: logger}
+}
+
+func (s *{{.Entity.Name}}ServiceServerImpl) Create{{.Entity.Name}}(ctx context.Context, req *pb.Create{{.Entity.Name}}Request) (*pb.Create{{.Entity.Name}}Response, error) {
+	e, err := s.svc.Create{{.Entity.Name}}(ctx, {{range $i, $f := .Entity.ConstructorFields}}{{if $i}}, {{end}}req.{{$f.Name}}{{end}})
+	if err != nil {
+		return nil, ToGRPCError(err)
+	}
+	return &pb.Create{{.Entity.Name}}Response{
+		{{.Entity.Name}}: asProto{{.Entity.Name}}(e),
+	}, nil
+}
+
+func (s *{{.Entity.Name}}ServiceServerImpl) Get{{.Entity.Name}}(ctx context.Context, req *pb.Get{{.Entity.Name}}Request) (*pb.Get{{.Entity.Name}}Response, error) {
+	e, err := s.svc.GetByID(ctx, req.Id)
+	if err != nil {
+		return nil, ToGRPCError(err)
+	}
+	return &pb.Get{{.Entity.Name}}Response{
+		{{.Entity.Name}}: asProto{{.Entity.Name}}(e),
+	}, nil
+}
+
+func (s *{{.Entity.Name}}ServiceServerImpl) List{{.Entity.Name}}s(ctx context.Context, _ *pb.List{{.Entity.Name}}sRequest) (*pb.List{{.Entity.Name}}sResponse, error) {
+	items, err := s.svc.List{{.Entity.Name}}s(ctx)
+	if err != nil {
+		return nil, ToGRPCError(err)
+	}
+
+	out := make([]*pb.{{.Entity.Name}}, 0, len(items))
+	for _, e := range items {
+		out = append(out, asProto{{.Entity.Name}}(e))
+	}
+
+	return &pb.List{{.Entity.Name}}sResponse{
+		{{.Entity.Name}}s: out,
+	}, nil
+}
+
+func asProto{{.Entity.Name}}(e *domain.{{.Entity.Name}}) *pb.{{.Entity.Name}} {
+	if e == nil {
+		return nil
+	}
+	return &pb.{{.Entity.Name}}{
+		Id:        e.ID.String(),
+{{- range .Entity.Fields}}
+		{{.Name}}:  {{if .IsEnum}}string(e.{{.Name}}){{else}}e.{{.Name}}{{end}},
+{{- end}}
+		CreatedAt: e.CreatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
