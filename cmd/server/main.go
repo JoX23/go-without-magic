@@ -82,24 +82,21 @@ func run() error {
 	// ── 4. Repositorio ─────────────────────────────────────────────────
 	// En local usamos memoria; para producción cambia por postgres.New(cfg.Database)
 	repo := memory.NewUserRepository()
-
-	// Para usar PostgreSQL real, reemplaza las líneas anteriores por:
-	// repo, err := postgres.New(cfg.Database)
-	// if err != nil {
-	//     return fmt.Errorf("connecting to database: %w", err)
-	// }
-	// defer repo.Close()
+	productRepo := memory.NewProductRepository()
 
 	// ── 5. Capa de servicio ────────────────────────────────────────────
 	userSvc := service.NewUserService(repo, logger)
+	productSvc := service.NewProductService(productRepo, logger)
 
 	// ── 6. HTTP Handler ────────────────────────────────────────────────
 	userHandler := httphandler.NewUserHandler(userSvc, logger)
+	productHandler := httphandler.NewProductHandler(productSvc, logger)
 
 	mux := http.NewServeMux()
 
 	// Rutas de negocio
 	userHandler.RegisterRoutes(mux)
+	productHandler.RegisterRoutes(mux)
 
 	// Rutas de infraestructura
 	// Sin checkers reales en modo memoria — agregar repo cuando uses postgres
