@@ -1,0 +1,30 @@
+# Binaries
+server
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test & coverage
+*.test
+coverage.html
+coverage.out
+
+# Go build cache
+/tmp/
+
+# Environment
+.env
+.env.local
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
