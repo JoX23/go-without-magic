@@ -18,9 +18,9 @@ type User struct {
 	CreatedAt string `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 }
 
-func (x *User) Reset()                             { *x = User{} }
-func (x *User) String() string                     { return "User" }
-func (*User) ProtoMessage()                        {}
+func (x *User) Reset()         { *x = User{} }
+func (x *User) String() string { return "User" }
+func (*User) ProtoMessage()    {}
 
 // Request/Response structs
 type CreateUserRequest struct {
@@ -28,47 +28,47 @@ type CreateUserRequest struct {
 	Name  string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 }
 
-func (x *CreateUserRequest) Reset()                             { *x = CreateUserRequest{} }
-func (x *CreateUserRequest) String() string                     { return "CreateUserRequest" }
-func (*CreateUserRequest) ProtoMessage()                        {}
+func (x *CreateUserRequest) Reset()         { *x = CreateUserRequest{} }
+func (x *CreateUserRequest) String() string { return "CreateUserRequest" }
+func (*CreateUserRequest) ProtoMessage()    {}
 
 type CreateUserResponse struct {
 	User *User `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 }
 
-func (x *CreateUserResponse) Reset()                             { *x = CreateUserResponse{} }
-func (x *CreateUserResponse) String() string                     { return "CreateUserResponse" }
-func (*CreateUserResponse) ProtoMessage()                        {}
+func (x *CreateUserResponse) Reset()         { *x = CreateUserResponse{} }
+func (x *CreateUserResponse) String() string { return "CreateUserResponse" }
+func (*CreateUserResponse) ProtoMessage()    {}
 
 type GetUserRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (x *GetUserRequest) Reset()                             { *x = GetUserRequest{} }
-func (x *GetUserRequest) String() string                     { return "GetUserRequest" }
-func (*GetUserRequest) ProtoMessage()                        {}
+func (x *GetUserRequest) Reset()         { *x = GetUserRequest{} }
+func (x *GetUserRequest) String() string { return "GetUserRequest" }
+func (*GetUserRequest) ProtoMessage()    {}
 
 type GetUserResponse struct {
 	User *User `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 }
 
-func (x *GetUserResponse) Reset()                             { *x = GetUserResponse{} }
-func (x *GetUserResponse) String() string                     { return "GetUserResponse" }
-func (*GetUserResponse) ProtoMessage()                        {}
+func (x *GetUserResponse) Reset()         { *x = GetUserResponse{} }
+func (x *GetUserResponse) String() string { return "GetUserResponse" }
+func (*GetUserResponse) ProtoMessage()    {}
 
 type ListUsersRequest struct{}
 
-func (x *ListUsersRequest) Reset()                             { *x = ListUsersRequest{} }
-func (x *ListUsersRequest) String() string                     { return "ListUsersRequest" }
-func (*ListUsersRequest) ProtoMessage()                        {}
+func (x *ListUsersRequest) Reset()         { *x = ListUsersRequest{} }
+func (x *ListUsersRequest) String() string { return "ListUsersRequest" }
+func (*ListUsersRequest) ProtoMessage()    {}
 
 type ListUsersResponse struct {
 	Users []*User `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
 }
 
-func (x *ListUsersResponse) Reset()                             { *x = ListUsersResponse{} }
-func (x *ListUsersResponse) String() string                     { return "ListUsersResponse" }
-func (*ListUsersResponse) ProtoMessage()                        {}
+func (x *ListUsersResponse) Reset()         { *x = ListUsersResponse{} }
+func (x *ListUsersResponse) String() string { return "ListUsersResponse" }
+func (*ListUsersResponse) ProtoMessage()    {}
 
 // Service definitions
 type UserServiceServer interface {
