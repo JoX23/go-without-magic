@@ -1,454 +1,447 @@
-# Go Without Magic 🚀
+<div align="center">
 
-A production-ready Go microservice template following clean architecture principles. This template provides a solid foundation for building scalable, maintainable microservices with best practices baked in.
+# Go Without Magic
 
-## 📋 Features
+**Production-ready Go microservice template — every line of code is yours to read, own, and modify.**
 
-- **Clean Architecture** - Separation of concerns with domain, service, handler, and repository layers
-- **HTTP API** - RESTful API endpoints with proper error handling
-- **Database** - PostgreSQL integration with connection pooling via pgx
-- **Configuration** - Environment-based configuration with Viper
-- **Logging** - Structured logging with Uber Zap
-- **Testing** - Comprehensive test suite with race detector and coverage reporting
-- **Observability** - Prepared for logs, metrics, and distributed tracing
-- **Graceful Shutdown** - Safe service termination with cleanup
-- **Docker** - Dockerfile and Docker Compose ready for containerization
-- **CI/CD** - GitHub Actions workflows for automated testing and building
-- **✨ NEW: Middleware System** - Composable middleware pattern inspired by GoKit
-- **✨ NEW: Resilience Patterns** - Circuit breaker & rate limiting (from Go-Zero best practices)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#testing)
+[![Race Detector](https://img.shields.io/badge/race%20detector-clean-brightgreen)](#concurrency-safety)
+[![Architecture](https://img.shields.io/badge/architecture-clean-blue)](#architecture)
 
-## 🛠️ Prerequisites
+[Quick Start](#-quick-start) · [Code Generator](#-code-generator-new) · [Features](#-whats-inside) · [Comparison](#-vs-other-frameworks)
 
-- **Go** 1.25.0 or later
-- **PostgreSQL** 12+ (for development)
-- **Docker** & **Docker Compose** (optional, for containerized setup)
-- **Make** (for task automation)
-- **golangci-lint** (for linting)
+</div>
 
-## 📁 Project Structure
+---
+
+> **The problem with most Go frameworks:** they do too much for you. When something breaks in production, you're debugging framework internals instead of your own business logic.
+>
+> **Go Without Magic** gives you a complete, battle-tested microservice foundation where every pattern is explicit, every layer is yours, and the code looks like *you* wrote it — because you understand all of it.
+
+---
+
+## Why This Exists
+
+Most Go microservice starters fall into one of two traps:
+
+- **Too minimal** — just a `main.go` and a "good luck" comment
+- **Too magical** — a framework that hides everything and locks you in
+
+This template hits the middle: a **complete, production-grade architecture** that you can clone, read top-to-bottom in an afternoon, and ship to production by Friday.
 
 ```
-.
-├── cmd/
-│   └── server/              # Application entrypoint
-├── internal/
-│   ├── config/              # Configuration management
-│   ├── domain/              # Domain models and interfaces
-│   ├── handler/             # HTTP request handlers
-│   ├── observability/       # Logging and observability setup
-│   ├── repository/          # Data persistence layer
-│   └── service/             # Business logic layer
-├── pkg/                     # Public packages (if any)
-├── deployments/
-│   └── docker/              # Docker configuration
-├── .github/
-│   └── workflows/           # GitHub Actions CI/CD
-├── Makefile                 # Development tasks
-├── go.mod & go.sum          # Go module dependencies
-└── README.md                # This file
+Clone → Understand → Ship
 ```
 
-## 🚀 Quick Start
+No DSLs. No annotations. No hidden layers. Just Go.
 
-### 1. Clone the Repository
+---
+
+## What's Inside
+
+| Layer | What it does | Key decisions |
+|---|---|---|
+| **Domain** | Business entities & contracts | Zero external imports |
+| **Service** | Orchestrates use cases | Depends only on domain interfaces |
+| **Handler** | HTTP & gRPC translation | Thin layer, maps transport ↔ domain |
+| **Repository** | Data persistence | Memory (tests) + PostgreSQL (production) |
+| **Middleware** | Cross-cutting concerns | Composable, GoKit-inspired |
+| **Observability** | Traces, metrics, logs | OpenTelemetry + Prometheus + Zap |
+| **Resilience** | Circuit breaker + rate limiter | Go-Zero inspired, zero dependencies |
+| **Code Generator** | Scaffolds new entities | YAML → 9 files, 0 boilerplate |
+
+### Full feature checklist
+
+- [x] Clean Architecture (Domain → Service → Handler → Repository)
+- [x] HTTP API with Go 1.22 routing (no external router)
+- [x] PostgreSQL via `pgx/v5` with connection pooling
+- [x] Structured logging (Uber Zap)
+- [x] Distributed tracing (OpenTelemetry)
+- [x] Metrics (Prometheus — HTTP, business, uptime)
+- [x] Composable middleware (RequestID, Logging, RecoveryPanic, Tracing, BusinessMetrics)
+- [x] Circuit Breaker (Closed → Open → HalfOpen)
+- [x] Rate Limiting (token bucket, thread-safe)
+- [x] Input validation with consistent error mapping
+- [x] OpenAPI spec generation
+- [x] Optional gRPC support with error code mapping
+- [x] Graceful shutdown with cleanup
+- [x] Docker + Docker Compose ready
+- [x] GitHub Actions CI/CD
+- [x] Race-detector clean (`go test -race ./...` ✅)
+- [x] **Code generator** — new entity in seconds
+
+---
+
+## Quick Start
 
 ```bash
 git clone https://github.com/JoX23/go-without-magic.git
 cd go-without-magic
-```
-
-### 2. Install Dependencies
-
-```bash
 go mod download
-go mod verify
-```
-
-### 3. Setup Environment
-
-Create a `.env` file in the project root:
-
-```env
-DATABASE_URL=postgres://user:password@localhost:5432/go_without_magic
-APP_ENV=development
-LOG_LEVEL=info
-```
-
-### 4. Run the Application
-
-```bash
 make run
 ```
 
-The server will start on `http://localhost:8080` (or the configured port).
-
-## 📚 Available Commands
-
-Use `make help` to see all available commands:
+Server starts at `http://localhost:8080`.
 
 ```bash
-make run          # Run the server in development mode
-make build        # Compile binary for Linux
-make test         # Run all tests with race detector
-make test-cover   # Run tests and generate coverage report
-make lint         # Run golangci-lint
-make tidy         # Clean and verify dependencies
-make docker-build # Build Docker image
-make clean        # Remove generated artifacts
-make help         # Show this help message
+# Create a user
+curl -X POST http://localhost:8080/users \
+  -H "Content-Type: application/json" \
+  -d '{"email": "alice@example.com", "name": "Alice"}'
+
+# List users
+curl http://localhost:8080/users
 ```
 
-## 🧪 Testing
+That's it. No config files, no daemon setup, no surprises.
 
-Run tests with race detector:
+---
+
+## Code Generator (NEW)
+
+> Add a new entity to your service in seconds — not hours.
+
+**The problem:** adding a second entity (`Product`, `Order`, `Invoice`) means touching ~9 files and writing ~685 lines of nearly-identical boilerplate.
+
+**The solution:** describe your entity in YAML, generate everything.
 
 ```bash
-make test
+# 1. Define your entity
+cat > product.yaml << 'EOF'
+version: "1"
+name: Product
+fields:
+  - name: Sku
+    type: string
+    unique: true
+    validate: "required"
+  - name: Name
+    type: string
+    validate: "required,min=3"
+  - name: Price
+    type: float64
+    validate: "required,min=0"
+  - name: Status
+    type: enum
+    values: ["draft", "published", "archived"]
+lookup_keys:
+  - field: Sku
+EOF
+
+# 2. Generate
+go run ./tools/codegen/ generate --schema product.yaml
 ```
 
-Generate coverage report:
+**Output — 9 files, 0 compilation errors:**
+
+```
+  WRITE  internal/domain/product_entity.go
+  WRITE  internal/domain/product_errors.go
+  WRITE  internal/domain/product_repository.go
+  WRITE  internal/service/product_service.go
+  WRITE  internal/handler/http/product_handler.go
+  WRITE  internal/repository/memory/product_repository.go
+  WRITE  internal/repository/postgres/product_repository.go
+  WRITE  internal/grpc/proto/product.proto
+  WRITE  internal/grpc/product_service.go
+
+[codegen] Generated: 9 files
+```
+
+The generated code **looks like you wrote it** — no annotations, no magic tags, no framework coupling. Every file passes `gofmt` and is immediately readable.
+
+### Generator commands
 
 ```bash
-make test-cover
+# Preview without writing anything
+go run ./tools/codegen/ generate --schema product.yaml --dry-run
+
+# Overwrite with automatic backup
+go run ./tools/codegen/ generate --schema product.yaml --force --backup
+
+# Validate schema only
+go run ./tools/codegen/ validate --schema product.yaml
+
+# List supported types and profiles
+go run ./tools/codegen/ list
 ```
 
-This creates `coverage.html` that you can open in your browser to see detailed coverage metrics.
+### Supported field types
 
-## 🏗️ Building
+| YAML | Go | PostgreSQL | Proto |
+|---|---|---|---|
+| `string` | `string` | `TEXT` | `string` |
+| `int` / `int64` | `int` / `int64` | `INTEGER` / `BIGINT` | `int32` / `int64` |
+| `float64` | `float64` | `NUMERIC(12,4)` | `double` |
+| `bool` | `bool` | `BOOLEAN` | `bool` |
+| `uuid` | `uuid.UUID` | `UUID` | `string` |
+| `time` | `time.Time` | `TIMESTAMPTZ` | `string` |
+| `enum` | `type T string` + `const` | `TEXT` | `string` |
 
-### Build a Binary
+### Generation profiles
 
-```bash
-make build
+| Profile | Generates | Use when |
+|---|---|---|
+| `full` *(default)* | All 9 layers | New entity from scratch |
+| `api` | Domain + service + HTTP + memory | HTTP-only, no gRPC/Postgres |
+| `domain-only` | Domain (entity + errors + interface) | Design the model first |
+| `no-grpc` | Everything except gRPC | Pure HTTP service |
+
+---
+
+## Architecture
+
+### The layers
+
+```
+┌─────────────────────────────────────────┐
+│              HTTP / gRPC                │  ← Transport layer
+├─────────────────────────────────────────┤
+│               Middleware                │  ← Cross-cutting concerns
+├─────────────────────────────────────────┤
+│               Handler                  │  ← Translates transport ↔ domain
+├─────────────────────────────────────────┤
+│               Service                  │  ← Business logic (pure Go)
+├─────────────────────────────────────────┤
+│               Domain                   │  ← Entities, errors, interfaces
+├─────────────────────────────────────────┤
+│            Repository                  │  ← Memory | PostgreSQL
+└─────────────────────────────────────────┘
 ```
 
-The compiled binary will be in `bin/go-without-magic`.
+The dependency rule: **inner layers never import outer layers**. Domain knows nothing about HTTP. Service knows nothing about PostgreSQL. This is what makes the code testable, refactorable, and long-lived.
 
-### Build Docker Image
-
-```bash
-make docker-build
-```
-
-This builds a Docker image tagged as `go-without-magic:latest`.
-
-## 🐳 Docker & Docker Compose
-
-The project includes a Dockerfile for containerized deployment:
-
-```bash
-docker build -f deployments/docker/Dockerfile -t go-without-magic:latest .
-docker run -p 8080:8080 go-without-magic:latest
-```
-
-## 📝 Architecture
-
-### Clean Architecture Layers
-
-1. **Domain** - Core business entities and interfaces. No external dependencies.
-2. **Service** - Business logic and use cases. Implements domain interfaces.
-3. **Handler** - HTTP endpoint routing and request/response handling.
-4. **Repository** - Data access and persistence. Abstracts database operations.
-5. **Config** - Application configuration from environment variables.
-6. **Observability** - Centralized logging and monitoring setup.
-
-### Dependencies
-
-- `go.uber.org/zap` - Structured logging
-- `github.com/spf13/viper` - Configuration management
-- `github.com/jackc/pgx/v5` - PostgreSQL driver
-- `github.com/google/uuid` - UUID generation
-- `github.com/stretchr/testify` - Testing utilities
-
-## 🔧 Configuration
-
-Configuration is managed via environment variables using Viper. Check `internal/config/` for available options.
-
-Common variables:
-- `DATABASE_URL` - PostgreSQL connection string
-- `APP_ENV` - Application environment (development/staging/production)
-- `LOG_LEVEL` - Logging level (debug/info/warn/error)
-- `PORT` - Server port (default: 8080)
-
-## 📊 Observability
-
-- **Structured Logging** - Zap integration for consistent, queryable logs
-- **Metrics** - Prometheus integration with HTTP, business, and uptime metrics
-- **Tracing** - OpenTelemetry distributed tracing with span processor and context propagation
-
-## � Concurrency Safety & Production Ready
-
-This microservice is **production-grade** and thoroughly tested for concurrent workloads:
-
-### Thread-Safety Guarantees
-- ✅ All repository operations are atomic (no race conditions)
-- ✅ Graceful shutdown is idempotent and thread-safe
-- ✅ HTTP handlers are safely concurrent
-- ✅ Logger (Zap) is thread-safe
-
-### Validation
-- **Race Detector:** `go test -race ./...` PASSED (0 race conditions)
-- **Load Testing:** 7,307+ req/sec sustained @ 100 concurrent connections
-- **Throughput:** Safe for unlimited RPS
-
-### Recent Improvements (v1.1.0)
-- Atomic `CreateIfNotExists()` in repository layer
-- Idempotent shutdown signal handling
-- Fail-fast HTTP server startup error detection
-
-For detailed analysis of concurrency safety, see [CONCURRENCY_AUDIT.md](CONCURRENCY_AUDIT.md).  
-For deployment checklist, see [DEPLOYMENT_READY.md](DEPLOYMENT_READY.md).
-
-## 🎯 Advanced Features: Middleware & Resilience (v1.2.0)
-
-**Go Without Magic** now includes battle-tested patterns from GoKit and Go-Zero:
-
-### Middleware System (Inspired by GoKit)
-Composable middleware for clean request handling:
+### Code you can actually read
 
 ```go
-import "github.com/JoX23/go-without-magic/internal/middleware"
+// Every dependency is explicit. No magic injection.
+userRepo    := memory.NewUserRepository()
+userService := service.NewUserService(userRepo, logger)
+userHandler := handler.NewUserHandler(userService, logger)
+userHandler.RegisterRoutes(mux)
+```
 
-// Chain multiple middlewares
+Compare that to frameworks where the startup code is a wall of decorators, registrations, and reflection calls. Here, you see the graph.
+
+### Project structure
+
+```
+.
+├── cmd/server/           # Entrypoint + dependency wiring
+├── internal/
+│   ├── domain/           # Entities, errors, repository interfaces
+│   ├── service/          # Business logic
+│   ├── handler/http/     # HTTP handlers
+│   ├── repository/
+│   │   ├── memory/       # In-memory (tests + local dev)
+│   │   └── postgres/     # Production persistence
+│   ├── middleware/       # Composable middleware chain
+│   ├── observability/    # Tracing, metrics, logging
+│   ├── resilience/       # Circuit breaker, rate limiter
+│   ├── validator/        # Input validation + error mapping
+│   ├── grpc/             # Optional gRPC server
+│   └── openapi/          # OpenAPI spec generation
+├── tools/codegen/        # Code generator
+│   ├── templates/        # Go templates for each layer
+│   ├── schema/           # YAML schema parser + validator
+│   └── examples/         # Example entity schemas
+└── deployments/docker/   # Dockerfile + Compose
+```
+
+---
+
+## Middleware System
+
+Compose exactly what you need, in the order you want:
+
+```go
 handler := middleware.Chain(
     middleware.RequestID(),
     middleware.Logging(logger),
+    middleware.Tracing(tracer, spanProcessor, metrics),
+    middleware.BusinessMetrics(metrics, spanProcessor),
     middleware.RecoveryPanic(logger),
 )(userHandler)
 ```
 
-**Built-in Middlewares:**
-- **RequestID** - Generates unique IDs for tracing
-- **Logging** - Structured logging with duration
-- **RecoveryPanic** - Gracefully recover from panics
+Each middleware does one thing. You can add, remove, or reorder them without touching business logic.
 
-### Resilience Patterns (Inspired by Go-Zero)
-Production resilience for distributed systems:
+---
+
+## Resilience Patterns
 
 ```go
-import "github.com/JoX23/go-without-magic/internal/resilience"
-
-// Circuit Breaker: Fail fast when service degrades
+// Circuit Breaker — fail fast when a dependency degrades
 cb := resilience.NewCircuitBreaker(5, 30*time.Second)
-err := cb.Call(func() error { return callService() })
+err := cb.Call(func() error {
+    return callExternalService()
+})
+// After 5 consecutive failures: opens for 30s, then probes
 
-// Rate Limiting: Smooth request distribution
+// Rate Limiter — smooth traffic distribution
 rl := resilience.NewRateLimiter(100) // 100 req/sec
-if !rl.Allow() { /* Too many requests */ }
+if !rl.Allow() {
+    http.Error(w, "too many requests", http.StatusTooManyRequests)
+}
 ```
 
-**Implemented Patterns:**
-- **Circuit Breaker** - States: Closed → Open → HalfOpen (prevents cascading failures)
-- **Rate Limiting** - Token bucket algorithm (thread-safe)
+Both are HTTP-middleware compatible and zero-dependency (no Hystrix, no Sentinel).
 
 ---
 
-## 📊 Feature Matrix: Implementation Status
+## Observability
 
-### Current State (v1.4.0)
-
-| Feature | Status | Phase | Source |
-|---------|--------|-------|--------|
-| Middleware System | ✅ Complete | Phase 1 | GoKit |
-| Circuit Breaker | ✅ Complete | Phase 2 | Go-Zero |
-| Rate Limiting | ✅ Complete | Phase 2 | Go-Zero |
-| OpenTelemetry Tracing | ✅ Complete | Phase 3 | Kratos |
-| Prometheus Metrics | ✅ Complete | Phase 3 | Kratos |
-| Automatic Validation | ✅ Complete | Phase 4 | Go-Zero |
-| Consistent Error Handling | ✅ Complete | Phase 4 | Go-Zero |
-| OpenAPI Auto-generation | ✅ Complete | Phase 5 | Go-Zero |
-| gRPC Support (Optional) | ✅ Complete | Phase 6 | Kratos |
-
-### Implementation Roadmap
-
-**✅ Completed (v1.4.0):**
-- Phase 1: Composable middleware system
-- Phase 2: Resilience patterns (circuit breaker + rate limiting)
-- Phase 3: Enhanced observability (OpenTelemetry tracing + Prometheus metrics)
-- Phase 4: Automatic validation & consistent error handling
-- Phase 5: OpenAPI documentation generation
-- Phase 6: Optional gRPC support
-
-See [BEST_PRACTICES_INTEGRATION.md](BEST_PRACTICES_INTEGRATION.md) for detailed specifications of all planned phases.
-
----
-
-## 📊 Comparison with Popular Go Frameworks
-
-**Go Without Magic** is designed as a minimal, explicit template focused on Clean Architecture principles. Here's how it compares to popular Go microservice frameworks:
-
-### Quick Comparison Table
-
-| Aspect | Go Without Magic | [GoKit](https://gokit.io) | [Kratos](https://go-kratos.dev) | [Go-Zero](https://go-zero.dev) |
-|--------|------------------|----------------------|------------------------------|--------------------------|
-| **Type** | Clean Architecture Template | Microservices Toolkit | Full Framework | Code Generation Framework |
-| **Philosophy** | Explicit, minimal, no magic | Flexible, lightly opinionated | Structured, batteries included | Productivity-first with generation |
-| **Setup Time** | ~5 min (clone & run) | ~10-15 min (integrate toolkit) | ~10 min (CLI) | ~5 min (code generation) |
-| **HTTP Support** | ✅ Native (std lib) | ✅ Yes (pluggable) | ✅ Yes | ✅ Yes (optimized) |
-| **gRPC Support** | ✅ Optional | ✅ Yes (pluggable) | ✅ Yes (out-of-box) | ✅ Yes |
-| **Code Generation** | ❌ Manual | ❌ No | ❌ No | ✅ Yes (goctl) |
-| **Built-in Resilience** | ✅ Yes (circuit breaker, rate limiting) | ✅ Yes | ✅ Yes | ✅ Yes (circuit breaker, rate limiting) |
-| **Middleware Support** | ✅ Yes (composable) | ✅ Yes | ✅ Yes (plug-able) | ✅ Yes |
-| **Built-in Observability** | ✅ Yes (tracing, metrics, logs) | ⚠️ Minimal | ✅ Yes (tracing, metrics, logs) | ✅ Yes |
-| **Database Abstraction** | ✅ Repository pattern | ✅ Flexible | ✅ Yes | ✅ Yes |
-| **Production Ready** | ✅ Yes (race-tested) | ✅ Yes | ✅ Yes | ✅ Yes (battle-tested) |
-| **Learning Curve** | 📈 Low | 📈 Medium | 📈 Medium | 📈 Low - High (depends on generation) |
-| **Flexibility** | 🎯 Very High | 🎯 Very High | 🎯 Medium | 🎯 Medium (opinionated) |
-| **Boilerplate** | 📝 Moderate | 📝 High | 📝 Low | 📝 Very Low |
-| **Maturity** | ✨ New | ✨ Stable (2014+) | ✨ Stable (2020+) | ✨ Stable (2021+, widely used) |
-
-### Detailed Analysis
-
-#### **Go Without Magic** - This Template
-**Best For:** Learning clean architecture, building MVPs, teams that prefer explicit patterns over magic
+Three signals, fully wired:
 
 ```go
-// You see exactly what's happening - no hidden magic
-userService := service.NewUserService(userRepo, logger)
-handler.NewUserHandler(userService).Register(mux)
-```
+// Distributed tracing — every request gets a span
+tp, _ := observability.NewTracerProvider("my-service", "1.0.0")
+tracer := tp.Tracer("handler")
 
-**Strengths:**
-- ✅ Minimal dependencies (just std lib + essentials)
-- ✅ Crystal-clear code flow and architecture
-- ✅ Perfect for learning Go architecture patterns
-- ✅ Full control over every component
-- ✅ Highly testable and debuggable
-- ✅ Production-grade concurrency safety (verified)
+ctx, span := observability.StartSpan(ctx, tracer, "create-user")
+defer span.End()
 
-**Trade-offs:**
-- ❌ No code generation (more boilerplate for CRUD operations)
-- ❌ More setup code compared to full frameworks
+// Prometheus metrics — HTTP + business + uptime
+metrics := observability.NewMetrics()
+metrics.RecordHTTPRequest("POST", "/users", 201, duration)
+metrics.RecordUserOperation("create", "success")
 
----
-
-#### **[GoKit](https://gokit.io/)** - Flexible Toolkit
-**Best For:** Teams building complex microservices who want maximum flexibility
-
-```go
-// Compose what you need
-var svc MyService = &myService{}
-svc = NewLoggingMiddleware()(svc)
-svc = NewCircuitBreakerMiddleware()(svc)
-```
-
-**Strengths:**
-- ✅ "Few opinions, lightly held" - extreme flexibility
-- ✅ Excellent middleware/interceptor system
-- ✅ No framework lock-in
-- ✅ Works well with existing codebases
-- ✅ Strong community (since 2014)
-
-**Trade-offs:**
-- ❌ Requires more manual integration
-- ❌ Steeper learning curve for beginners
-- ❌ More setup code needed
-- ❌ No code generation
-- ❌ No built-in runtime features
-
----
-
-#### **[Kratos](https://go-kratos.dev/)** - Full-Featured Framework
-**Best For:** Teams building production microservices at scale with need for all-in-one solution
-
-```go
-app := kratos.New(
-    kratos.Name("user-service"),
-    kratos.Server(httpSrv, grpcSrv),
+// Structured logs — machine-readable from day one
+logger.Info("user created",
+    zap.String("id", user.ID.String()),
+    zap.Duration("latency", duration),
 )
-app.Run()
 ```
 
-**Strengths:**
-- ✅ HTTP + gRPC support out-of-the-box
-- ✅ Built-in observability (tracing, metrics, logs)
-- ✅ Plug-able middleware architecture
-- ✅ Protobuf-first API design
-- ✅ Production-ready starter kit
-- ✅ Strong enterprise support
+---
 
-**Trade-offs:**
-- ❌ More opinionated (less flexibility)
-- ❌ Heavier dependency footprint
-- ❌ Steeper learning curve
-- ❌ Over-engineered for simple APIs
+## Concurrency Safety
+
+Verified clean under load:
+
+| Test | Result |
+|---|---|
+| `go test -race ./...` | 0 race conditions |
+| Load test (100 concurrent) | 7,307+ req/sec sustained |
+| Atomic repository operations | Verified — no lost writes |
+| Graceful shutdown | Idempotent, drains in-flight requests |
 
 ---
 
-#### **[Go-Zero](https://go-zero.dev/)** - Code Generation First
-**Best For:** Rapid development, teams that want less boilerplate, productivity-focused teams
+## Configuration
 
-```bash
-goctl api go -api user.api -dir .
-# Generates: http server, validation, middleware, error handling
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/mydb
+APP_ENV=development
+LOG_LEVEL=info
+PORT=8080
 ```
 
-**Strengths:**
-- ✅ Massive reduction in boilerplate code
-- ✅ Fast time-to-value for new services
-- ✅ Built-in resilience (circuit breaker, rate limiting)
-- ✅ High-performance router (zero-allocation)
-- ✅ Battle-tested in production (thousands of companies)
-- ✅ Excellent documentation
-- ✅ Auto-generates OpenAPI specs
-
-**Trade-offs:**
-- ❌ Opinionated structure (less flexibility)
-- ❌ Magic code generation (harder to customize)
-- ❌ Lock-in to the framework
-- ❌ Requires learning goctl DSL
+All config via environment variables (12-factor). Managed by Viper — supports `.env` files, env vars, and config files interchangeably.
 
 ---
 
-### Decision Matrix
-
-Choose **Go Without Magic** if you:
-- 🎓 Want to learn Go architecture patterns
-- 🎯 Value explicitness over convenience
-- 🚀 Building an MVP or small service
-- 👨‍💻 Prefer understanding every line of code
-- 🔧 Want maximum customization
-
-Choose **GoKit** if you:
-- 🎯 Need extreme flexibility
-- 🔌 Have complex service-to-service patterns
-- 👥 Prefer library composition
-- 🏢 Integrating with existing systems
-
-Choose **Kratos** if you:
-- 🚀 Building enterprise microservices
-- 📡 Need gRPC + HTTP simultaneously
-- 📊 Want built-in observability
-- 🛡️ Need comprehensive middleware system
-- 🏢 Operating at scale
-
-Choose **Go-Zero** if you:
-- ⚡ Want to ship fast with minimal boilerplate
-- 📝 Like code generation workflows
-- 🎯 Building CRUD-heavy services
-- 📊 Want built-in resilience patterns
-- 💰 Prioritize developer productivity
-
----
-## �🔄 CI/CD
-
-GitHub Actions workflows under `.github/workflows/` provide:
-- Automated testing on push/PRs
-- Code quality checks with golangci-lint
-- Automated builds
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 💡 Getting Help
-
-For issues, questions, or improvements:
-1. Check existing issues
-2. Open a new issue with a clear description
-3. Submit a pull request with your improvements
-
-## Run
+## Available Commands
 
 ```bash
-make run
+make run          # Run in development mode
+make build        # Compile production binary → bin/
+make test         # Run tests with race detector
+make test-cover   # Generate coverage.html
+make lint         # golangci-lint
+make docker-build # Build Docker image
+make tidy         # Clean and verify dependencies
+```
+
+---
+
+## vs. Other Frameworks
+
+| | Go Without Magic | GoKit | Kratos | Go-Zero |
+|---|---|---|---|---|
+| **Philosophy** | Explicit, own every line | Flexible toolkit | Full framework | Code generation first |
+| **Setup** | Clone & run (5 min) | Integrate (15 min) | CLI setup (10 min) | goctl install (5 min) |
+| **Code you read** | All of it | Most of it | Framework internals | Generated + DSL |
+| **Lock-in** | None | Low | Medium | High (goctl DSL) |
+| **Code generation** | ✅ (your architecture) | ❌ | ❌ | ✅ (framework's architecture) |
+| **Observability** | ✅ Full | ⚠️ Minimal | ✅ Full | ✅ Full |
+| **gRPC** | ✅ Optional | ✅ Pluggable | ✅ Built-in | ✅ Built-in |
+| **Resilience** | ✅ Built-in | ✅ Pluggable | ✅ Built-in | ✅ Built-in |
+| **Learning curve** | Low | Medium | Medium-High | Low→High |
+| **Debuggability** | Very high | High | Medium | Low (generated code) |
+
+### Pick this if you
+
+- Want to understand every line of your service in production
+- Are learning Go architecture patterns and want working reference code
+- Value debuggability over convenience
+- Want code generation that respects *your* architecture, not a framework's
+- Are building an MVP and need to move fast without accumulating tech debt
+
+### Pick something else if you
+
+- **GoKit** — need maximum composability across a large microservices mesh
+- **Kratos** — need protobuf-first development with enterprise support
+- **Go-Zero** — need to ship dozens of CRUD services as fast as possible
+
+---
+
+## Dependencies
+
+Carefully chosen — every dependency earns its place:
+
+| Package | Why |
+|---|---|
+| `go.uber.org/zap` | Structured, performant logging |
+| `github.com/spf13/viper` | 12-factor config management |
+| `github.com/jackc/pgx/v5` | Best-in-class PostgreSQL driver |
+| `github.com/google/uuid` | UUID generation |
+| `github.com/stretchr/testify` | Test assertions |
+| `go.opentelemetry.io/otel` | Distributed tracing standard |
+| `github.com/prometheus/client_golang` | Metrics |
+| `google.golang.org/grpc` | Optional gRPC transport |
+| `gopkg.in/yaml.v3` | Schema parsing (codegen only) |
+
+No ORMs. No DI containers. No reflection magic.
+
+---
+
+## CI/CD
+
+GitHub Actions workflows (`.github/workflows/`) run on every push and PR:
+
+- `go test -race ./...` — tests with race detector
+- `golangci-lint` — static analysis
+- `go build ./...` — compilation check
+
+---
+
+## Contributing
+
+Contributions are welcome. The bar is: **every addition must be readable, explicit, and serve a clear purpose**.
+
+1. Fork the repo
+2. Create a branch (`git checkout -b feat/my-feature`)
+3. Make your changes — keep them focused
+4. Run `make test && make lint`
+5. Open a PR with a clear description
+
+If you're adding a new pattern, explain *why* it belongs here and not in a separate library.
+
+---
+
+## License
+
+MIT — use it, fork it, build on it.
+
+---
+
+<div align="center">
+
+**If this saved you hours of boilerplate, consider giving it a ⭐**
+
+Built with the philosophy that the best framework is one you fully understand.
+
+</div>
