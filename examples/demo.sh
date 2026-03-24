@@ -71,6 +71,9 @@ assert_field() {
   fi
 }
 
+# ── Sufijo único por ejecución (evita colisiones con datos previos en memoria) ──
+TS=$(date +%s)
+
 # ── Inicio ────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}go-without-magic — demo completo${RESET}"
@@ -94,23 +97,25 @@ header "2. GESTIÓN DE USUARIOS"
 # =============================================================================
 
 step "POST /users — crear usuario Alice"
+ALICE_EMAIL="alice.${TS}@example.com"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/users" \
   -H "Content-Type: application/json" \
-  -d '{"email": "alice@example.com", "name": "Alice Smith"}')
+  -d "{\"email\": \"${ALICE_EMAIL}\", \"name\": \"Alice Smith\"}")
 BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 201 "$STATUS" "crear usuario"
-assert_field "$BODY" ".email" "alice@example.com"
+assert_field "$BODY" ".email" "${ALICE_EMAIL}"
 assert_field "$BODY" ".name" "Alice Smith"
 
 ALICE_ID=$(echo "$BODY" | jq -r ".id")
 ok "ID asignado: $ALICE_ID"
 
 step "POST /users — crear segundo usuario Bob"
+BOB_EMAIL="bob.${TS}@example.com"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/users" \
   -H "Content-Type: application/json" \
-  -d '{"email": "bob@example.com", "name": "Bob Johnson"}')
+  -d "{\"email\": \"${BOB_EMAIL}\", \"name\": \"Bob Johnson\"}")
 BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
@@ -121,7 +126,7 @@ ok "ID asignado: $BOB_ID"
 step "POST /users — email duplicado (debe rechazarse)"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/users" \
   -H "Content-Type: application/json" \
-  -d '{"email": "alice@example.com", "name": "Alice Duplicada"}')
+  -d "{\"email\": \"${ALICE_EMAIL}\", \"name\": \"Alice Duplicada\"}")
 BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
@@ -143,7 +148,7 @@ STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "buscar por ID"
 assert_field "$BODY" ".id" "$ALICE_ID"
-assert_field "$BODY" ".email" "alice@example.com"
+assert_field "$BODY" ".email" "${ALICE_EMAIL}"
 
 step "GET /users — listar todos los usuarios"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/users")
@@ -165,31 +170,25 @@ header "3. CATÁLOGO DE PRODUCTOS"
 # =============================================================================
 
 step "POST /products — crear laptop"
+LAPTOP_SKU="LAPTOP-${TS}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/products" \
   -H "Content-Type: application/json" \
-  -d '{
-    "sku": "LAPTOP-001",
-    "name": "MacBook Pro 14",
-    "price": 1999.99
-  }')
+  -d "{\"sku\": \"${LAPTOP_SKU}\", \"name\": \"MacBook Pro 14\", \"price\": 1999.99}")
 BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 201 "$STATUS" "crear producto"
-assert_field "$BODY" ".sku" "LAPTOP-001"
+assert_field "$BODY" ".sku" "${LAPTOP_SKU}"
 assert_field "$BODY" ".name" "MacBook Pro 14"
 
 LAPTOP_ID=$(echo "$BODY" | jq -r ".id")
 ok "ID asignado: $LAPTOP_ID"
 
 step "POST /products — crear teclado"
+KEYBOARD_SKU="KEYBOARD-${TS}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/products" \
   -H "Content-Type: application/json" \
-  -d '{
-    "sku": "KEYBOARD-001",
-    "name": "Keychron K2 Pro",
-    "price": 119.99
-  }')
+  -d "{\"sku\": \"${KEYBOARD_SKU}\", \"name\": \"Keychron K2 Pro\", \"price\": 119.99}")
 BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
@@ -200,11 +199,7 @@ ok "ID asignado: $KEYBOARD_ID"
 step "POST /products — SKU duplicado (debe rechazarse)"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/products" \
   -H "Content-Type: application/json" \
-  -d '{
-    "sku": "LAPTOP-001",
-    "name": "Otro laptop con mismo SKU",
-    "price": 999.00
-  }')
+  -d "{\"sku\": \"${LAPTOP_SKU}\", \"name\": \"Otro laptop con mismo SKU\", \"price\": 999.00}")
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 409 "$STATUS" "SKU duplicado rechazado con 409 Conflict"
@@ -215,7 +210,7 @@ BODY=$(echo "$RESPONSE" | sed '$d')
 STATUS=$(echo "$RESPONSE" | tail -n 1)
 
 assert_status 200 "$STATUS" "buscar producto por ID"
-assert_field "$BODY" ".sku" "LAPTOP-001"
+assert_field "$BODY" ".sku" "${LAPTOP_SKU}"
 
 step "GET /products — listar todos los productos"
 RESPONSE=$(curl -s -w "\n%{http_code}" "${BASE_URL}/products")
@@ -256,8 +251,8 @@ header "5. RESUMEN"
 echo ""
 echo -e "  Usuarios creados:  Alice ($ALICE_ID)"
 echo -e "                     Bob   ($BOB_ID)"
-echo -e "  Productos creados: LAPTOP-001   ($LAPTOP_ID)"
-echo -e "                     KEYBOARD-001 ($KEYBOARD_ID)"
+echo -e "  Productos creados: ${LAPTOP_SKU}   ($LAPTOP_ID)"
+echo -e "                     ${KEYBOARD_SKU} ($KEYBOARD_ID)"
 echo ""
 
 TOTAL=$((PASS + FAIL))
