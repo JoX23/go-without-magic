@@ -259,7 +259,7 @@ if !rl.Allow() { /* Too many requests */ }
 | Automatic Validation | ⏳ Planned | Phase 4 | Go-Zero |
 | Consistent Error Handling | ⏳ Planned | Phase 4 | Go-Zero |
 | OpenAPI Auto-generation | ⏳ Planned | Phase 5 | Go-Zero |
-| gRPC Support (Optional) | ⏳ Planned | Phase 6 | Kratos |
+| gRPC Support (Optional) | ✅ Complete | Phase 6 | Kratos |
 
 ### Implementation Roadmap
 
@@ -289,7 +289,7 @@ See [BEST_PRACTICES_INTEGRATION.md](BEST_PRACTICES_INTEGRATION.md) for detailed 
 | **Philosophy** | Explicit, minimal, no magic | Flexible, lightly opinionated | Structured, batteries included | Productivity-first with generation |
 | **Setup Time** | ~5 min (clone & run) | ~10-15 min (integrate toolkit) | ~10 min (CLI) | ~5 min (code generation) |
 | **HTTP Support** | ✅ Native (std lib) | ✅ Yes (pluggable) | ✅ Yes | ✅ Yes (optimized) |
-| **gRPC Support** | ❌ No | ✅ Yes (pluggable) | ✅ Yes (out-of-box) | ✅ Yes |
+| **gRPC Support** | ✅ Optional | ✅ Yes (pluggable) | ✅ Yes (out-of-box) | ✅ Yes |
 | **Code Generation** | ❌ Manual | ❌ No | ❌ No | ✅ Yes (goctl) |
 | **Built-in Resilience** | ✅ Yes (circuit breaker, rate limiting) | ✅ Yes | ✅ Yes | ✅ Yes (circuit breaker, rate limiting) |
 | **Middleware Support** | ✅ Yes (composable) | ✅ Yes | ✅ Yes (plug-able) | ✅ Yes |
