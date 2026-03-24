@@ -172,11 +172,9 @@ Common variables:
 
 ## 📊 Observability
 
-The project is prepared for:
-
 - **Structured Logging** - Zap integration for consistent, queryable logs
-- **Metrics** - Ready for Prometheus integration
-- **Tracing** - Architecture supports OpenTelemetry
+- **Metrics** - Prometheus integration with HTTP, business, and uptime metrics
+- **Tracing** - OpenTelemetry distributed tracing with span processor and context propagation
 
 ## � Concurrency Safety & Production Ready
 
@@ -247,31 +245,29 @@ if !rl.Allow() { /* Too many requests */ }
 
 ## 📊 Feature Matrix: Implementation Status
 
-### Current State (v1.2.0)
+### Current State (v1.4.0)
 
 | Feature | Status | Phase | Source |
 |---------|--------|-------|--------|
 | Middleware System | ✅ Complete | Phase 1 | GoKit |
 | Circuit Breaker | ✅ Complete | Phase 2 | Go-Zero |
 | Rate Limiting | ✅ Complete | Phase 2 | Go-Zero |
-| OpenTelemetry Tracing | ⏳ Planned | Phase 3 | Kratos |
-| Prometheus Metrics | ⏳ Planned | Phase 3 | Kratos |
-| Automatic Validation | ⏳ Planned | Phase 4 | Go-Zero |
-| Consistent Error Handling | ⏳ Planned | Phase 4 | Go-Zero |
-| OpenAPI Auto-generation | ⏳ Planned | Phase 5 | Go-Zero |
+| OpenTelemetry Tracing | ✅ Complete | Phase 3 | Kratos |
+| Prometheus Metrics | ✅ Complete | Phase 3 | Kratos |
+| Automatic Validation | ✅ Complete | Phase 4 | Go-Zero |
+| Consistent Error Handling | ✅ Complete | Phase 4 | Go-Zero |
+| OpenAPI Auto-generation | ✅ Complete | Phase 5 | Go-Zero |
 | gRPC Support (Optional) | ✅ Complete | Phase 6 | Kratos |
 
 ### Implementation Roadmap
 
-**✅ Completed (v1.2.0):**
+**✅ Completed (v1.4.0):**
 - Phase 1: Composable middleware system
 - Phase 2: Resilience patterns (circuit breaker + rate limiting)
-
-**⏳ Planned (v1.3.0+):**
-- Phase 3: Enhanced observability (OpenTelemetry + Prometheus)
-- Phase 4: Validation & error handling
+- Phase 3: Enhanced observability (OpenTelemetry tracing + Prometheus metrics)
+- Phase 4: Automatic validation & consistent error handling
 - Phase 5: OpenAPI documentation generation
-- Phase 6: Optional gRPC support (enterprise feature)
+- Phase 6: Optional gRPC support
 
 See [BEST_PRACTICES_INTEGRATION.md](BEST_PRACTICES_INTEGRATION.md) for detailed specifications of all planned phases.
 
@@ -293,7 +289,7 @@ See [BEST_PRACTICES_INTEGRATION.md](BEST_PRACTICES_INTEGRATION.md) for detailed 
 | **Code Generation** | ❌ Manual | ❌ No | ❌ No | ✅ Yes (goctl) |
 | **Built-in Resilience** | ✅ Yes (circuit breaker, rate limiting) | ✅ Yes | ✅ Yes | ✅ Yes (circuit breaker, rate limiting) |
 | **Middleware Support** | ✅ Yes (composable) | ✅ Yes | ✅ Yes (plug-able) | ✅ Yes |
-| **Built-in Observability** | ⚠️ Partial (logging only) | ⚠️ Minimal | ✅ Yes (tracing, metrics, logs) | ✅ Yes |
+| **Built-in Observability** | ✅ Yes (tracing, metrics, logs) | ⚠️ Minimal | ✅ Yes (tracing, metrics, logs) | ✅ Yes |
 | **Database Abstraction** | ✅ Repository pattern | ✅ Flexible | ✅ Yes | ✅ Yes |
 | **Production Ready** | ✅ Yes (race-tested) | ✅ Yes | ✅ Yes | ✅ Yes (battle-tested) |
 | **Learning Curve** | 📈 Low | 📈 Medium | 📈 Medium | 📈 Low - High (depends on generation) |
@@ -322,9 +318,7 @@ handler.NewUserHandler(userService).Register(mux)
 
 **Trade-offs:**
 - ❌ No code generation (more boilerplate for CRUD operations)
-- ❌ You implement middleware/resilience patterns yourself
-- ❌ No built-in circuit breakers or rate limiting
-- ❌ Single responsibility: HTTP only (no built-in gRPC)
+- ❌ More setup code compared to full frameworks
 
 ---
 
