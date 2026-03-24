@@ -25,6 +25,7 @@ type ServiceConfig struct {
 
 type ServerConfig struct {
 	HTTPPort        int           `mapstructure:"http_port"`
+	GRPCPort        int           `mapstructure:"grpc_port"`
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
 	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
@@ -93,6 +94,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("service.version", "dev")
 	v.SetDefault("service.environment", "local")
 	v.SetDefault("server.http_port", 8080)
+	v.SetDefault("server.grpc_port", 50051)
 	v.SetDefault("server.shutdown_timeout", 30*time.Second)
 	v.SetDefault("server.read_timeout", 10*time.Second)
 	v.SetDefault("server.write_timeout", 10*time.Second)

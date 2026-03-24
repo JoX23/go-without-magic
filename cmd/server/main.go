@@ -8,8 +8,11 @@ import (
 	"os"
 
 	"go.uber.org/zap"
+	grpcpkg "google.golang.org/grpc"
 
 	"github.com/JoX23/go-without-magic/internal/config"
+	grpcservice "github.com/JoX23/go-without-magic/internal/grpc"
+	"github.com/JoX23/go-without-magic/internal/grpc/pb"
 	httphandler "github.com/JoX23/go-without-magic/internal/handler/http"
 	"github.com/JoX23/go-without-magic/internal/observability"
 	"github.com/JoX23/go-without-magic/internal/repository/memory"
@@ -81,7 +84,7 @@ func run() error {
 
 	// Chequear que el puerto esté disponible ANTES de crear el servidor
 	// Esto nos da error temprano en lugar de una goroutine silenciosa
-	lis, err := net.Listen("tcp", addr)
+	httpLis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("cannot bind to %s: %w", addr, err)
 	}
@@ -94,19 +97,37 @@ func run() error {
 	}
 
 	// Canal para reportar errores del servidor
-	serverErrors := make(chan error, 1)
+	serverErrors := make(chan error, 2)
 
 	// Arrancar servidor HTTP en goroutine
-	// El listener ya está binding al puerto, así que no hay race condition
 	go func() {
 		logger.Info("HTTP server listening", zap.String("addr", addr))
-		// Usar Serve() en lugar de ListenAndServe() porque ya tenemos el listener
-		serverErrors <- httpServer.Serve(lis)
+		serverErrors <- httpServer.Serve(httpLis)
 	}()
+
+	var grpcServer *grpcpkg.Server
+	if cfg.Server.GRPCPort > 0 {
+		grpcAddr := fmt.Sprintf(":%d", cfg.Server.GRPCPort)
+		grpcLis, err := net.Listen("tcp", grpcAddr)
+		if err != nil {
+			return fmt.Errorf("cannot bind to %s: %w", grpcAddr, err)
+		}
+
+		grpcServer = grpcpkg.NewServer(grpcpkg.UnaryInterceptor(grpcservice.UnaryServerInterceptor(logger)))
+		pb.RegisterUserServiceServer(grpcServer, grpcservice.NewUserServiceServer(userSvc, logger))
+
+		go func() {
+			logger.Info("gRPC server listening", zap.String("addr", grpcAddr))
+			serverErrors <- grpcServer.Serve(grpcLis)
+		}()
+	}
 
 	// ── 7. Graceful Shutdown ───────────────────────────────────────────
 	shutdownMgr := shutdown.NewManager(cfg.Server.ShutdownTimeout, logger).
 		Register("http", httpServer)
+	if grpcServer != nil {
+		shutdownMgr.Register("grpc", &grpcservice.GRPCServerAdapter{Server: grpcServer})
+	}
 
 	// Iniciar el signal handler en goroutine (no bloquea)
 	go shutdownMgr.Wait()
@@ -114,8 +135,8 @@ func run() error {
 	// Esperar: error del servidor O finalización del shutdown
 	// Si el servidor falla al startup, retornamos el error inmediatamente
 	err = <-serverErrors
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("HTTP server error: %w", err)
+	if err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, grpcpkg.ErrServerStopped) {
+		return fmt.Errorf("server error: %w", err)
 	}
 
 	return nil
