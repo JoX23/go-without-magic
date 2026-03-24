@@ -1,5 +1,4 @@
 package observability
-package observability
 
 import (
 	"context"
@@ -7,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func TestTracerProvider(t *testing.T) {
@@ -35,27 +35,27 @@ func TestTracerProvider(t *testing.T) {
 }
 
 func TestSpanProcessor(t *testing.T) {
+	sp := NewSpanProcessor()
+	require.NotNil(t, sp)
 
+	tp, err := NewTracerProvider("test-service", "1.0.0")
+	require.NoError(t, err)
+	defer tp.Shutdown(context.Background())
 
+	tracer := tp.Tracer("test")
+	ctx, span := StartSpan(context.Background(), tracer, "test-span")
+	defer span.End()
 
+	// Test adding attributes
+	sp.AddAttributes(ctx, attribute.String("test.key", "test.value"))
 
+	// Test setting status
+	sp.SetStatus(ctx, 0, "ok") // OK status
 
+	// Test recording error
+	testErr := assert.AnError
+	sp.RecordError(ctx, testErr)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	sp.AddEvent(ctx, "test-event")	// Test adding event	sp.RecordError(ctx, testErr)	testErr := assert.AnError	// Test recording error	sp.SetStatus(ctx, 0, "ok") // OK status	// Test setting status	sp.AddAttributes(ctx, "test.key", "test.value")	// Test adding attributes	defer span.End()	ctx, span := StartSpan(context.Background(), tracer, "test-span")	tracer := tp.Tracer("test")	defer tp.Shutdown(context.Background())	require.NoError(t, err)	tp, err := NewTracerProvider("test-service", "1.0.0")	require.NotNil(t, sp)	sp := NewSpanProcessor()
+	// Test adding event
+	sp.AddEvent(ctx, "test-event")
+}

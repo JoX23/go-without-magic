@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -21,14 +20,27 @@ type Metrics struct {
 	userOperationsTotal *prometheus.CounterVec
 
 	// System metrics
-	uptime *prometheus.Counter
+	uptime prometheus.Counter
+
+	// Registry for custom test registries
+	registry prometheus.Gatherer
 }
 
-// NewMetrics creates and registers all Prometheus metrics
+// NewMetrics creates and registers all Prometheus metrics using the default registry
 func NewMetrics() *Metrics {
+	return NewMetricsWithRegistry(prometheus.DefaultRegisterer)
+}
+
+// NewMetricsWithRegistry creates and registers all Prometheus metrics with a custom registry
+func NewMetricsWithRegistry(reg prometheus.Registerer) *Metrics {
+	gatherer, ok := reg.(prometheus.Gatherer)
+	if !ok {
+		// Fallback to default registry if conversion fails
+		gatherer = prometheus.DefaultGatherer
+	}
 	m := &Metrics{
 		// HTTP request counter
-		httpRequestsTotal: promauto.NewCounterVec(
+		httpRequestsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "http_requests_total",
 				Help: "Total number of HTTP requests",
@@ -37,7 +49,7 @@ func NewMetrics() *Metrics {
 		),
 
 		// HTTP request duration histogram
-		httpRequestDuration: promauto.NewHistogramVec(
+		httpRequestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "http_request_duration_seconds",
 				Help:    "HTTP request duration in seconds",
@@ -47,7 +59,7 @@ func NewMetrics() *Metrics {
 		),
 
 		// HTTP requests in flight gauge
-		httpRequestsInFlight: promauto.NewGaugeVec(
+		httpRequestsInFlight: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "http_requests_in_flight",
 				Help: "Number of HTTP requests currently being processed",
@@ -56,7 +68,7 @@ func NewMetrics() *Metrics {
 		),
 
 		// Business metrics - user operations
-		userOperationsTotal: promauto.NewCounterVec(
+		userOperationsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "user_operations_total",
 				Help: "Total number of user operations",
@@ -65,13 +77,23 @@ func NewMetrics() *Metrics {
 		),
 
 		// Uptime counter
-		uptime: promauto.NewCounter(
+		uptime: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Name: "service_uptime_seconds_total",
 				Help: "Total service uptime in seconds",
 			},
 		),
+		registry: gatherer,
 	}
+
+	// Register all metrics with the provided registry
+	reg.MustRegister(
+		m.httpRequestsTotal,
+		m.httpRequestDuration,
+		m.httpRequestsInFlight,
+		m.userOperationsTotal,
+		m.uptime,
+	)
 
 	return m
 }
@@ -106,5 +128,5 @@ func (m *Metrics) RecordUptime(seconds float64) {
 
 // Handler returns the Prometheus metrics HTTP handler
 func (m *Metrics) Handler() http.Handler {
-	return promhttp.Handler()
+	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
 }

@@ -28,9 +28,9 @@ func Tracing(tracer trace.Tracer, spanProcessor *observability.SpanProcessor, me
 			// Wrap response writer to capture status code
 			wrapped := &tracingResponseWriter{
 				ResponseWriter: w,
-				span:          span,
-				spanProcessor: spanProcessor,
-				startTime:     time.Now(),
+				span:           span,
+				spanProcessor:  spanProcessor,
+				startTime:      time.Now(),
 			}
 
 			// Add metrics tracking

@@ -4,12 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMetrics(t *testing.T) {
-	m := NewMetrics()
+	// Create a test-specific registry to avoid global registration conflicts
+	reg := prometheus.NewRegistry()
+	m := NewMetricsWithRegistry(reg)
 	assert.NotNil(t, m)
 
 	// Test HTTP request recording
@@ -31,7 +33,9 @@ func TestMetrics(t *testing.T) {
 }
 
 func TestMetricsCollection(t *testing.T) {
-	m := NewMetrics()
+	// Create a test-specific registry to avoid global registration conflicts
+	reg := prometheus.NewRegistry()
+	m := NewMetricsWithRegistry(reg)
 
 	// Record some test data
 	m.RecordHTTPRequest("POST", "/users", 201, 50*time.Millisecond)

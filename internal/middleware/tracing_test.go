@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/JoX23/go-without-magic/internal/observability"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +18,7 @@ func TestTracingMiddleware(t *testing.T) {
 	require.NoError(t, err)
 	defer tp.Shutdown(context.Background())
 
-	metrics := observability.NewMetrics()
+	metrics := observability.NewMetricsWithRegistry(prometheus.NewRegistry())
 	spanProcessor := observability.NewSpanProcessor()
 	tracer := tp.Tracer("test")
 
@@ -43,7 +44,7 @@ func TestTracingMiddleware(t *testing.T) {
 }
 
 func TestBusinessMetricsMiddleware(t *testing.T) {
-	metrics := observability.NewMetrics()
+	metrics := observability.NewMetricsWithRegistry(prometheus.NewRegistry())
 	spanProcessor := observability.NewSpanProcessor()
 
 	// Create middleware
@@ -70,19 +71,23 @@ func TestTracingResponseWriter(t *testing.T) {
 	require.NoError(t, err)
 	defer tp.Shutdown(context.Background())
 
-	metrics := observability.NewMetrics()
+	metrics := observability.NewMetricsWithRegistry(prometheus.NewRegistry())
 	spanProcessor := observability.NewSpanProcessor()
 	tracer := tp.Tracer("test")
 
 	ctx, span := observability.StartSpan(context.Background(), tracer, "test")
 	defer span.End()
 
+	// Use metrics and ctx to avoid unused variable errors
+	_ = metrics
+	_ = ctx
+
 	// Create tracing response writer
 	w := httptest.NewRecorder()
 	tracingWriter := &tracingResponseWriter{
 		ResponseWriter: w,
-		span:          span,
-		spanProcessor: spanProcessor,
+		span:           span,
+		spanProcessor:  spanProcessor,
 	}
 
 	// Test writing header
