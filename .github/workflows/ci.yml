@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.25"
 
 jobs:
   # ── Test ────────────────────────────────────────────────────────────
@@ -52,6 +52,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          install-mode: goinstall
           args: --timeout=3m
 
   # ── Build & Docker ──────────────────────────────────────────────────
