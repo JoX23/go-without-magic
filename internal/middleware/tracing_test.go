@@ -28,7 +28,7 @@ func TestTracingMiddleware(t *testing.T) {
 	// Create test handler
 	handler := tracingMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test response"))
+		_, _ = w.Write([]byte("test response"))
 	}))
 
 	// Create test request
@@ -53,7 +53,7 @@ func TestBusinessMetricsMiddleware(t *testing.T) {
 	// Create test handler for user creation
 	handler := businessMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("user created"))
+		_, _ = w.Write([]byte("user created"))
 	}))
 
 	// Test user creation endpoint
