@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Certificados SSL para llamadas HTTPS dentro del binario
 # tzdata para manejo correcto de zonas horarias
