@@ -76,7 +76,7 @@ jobs:
         run: docker build -f deployments/docker/Dockerfile -t ${{ github.repository }}:test .
 
       - name: Scan image for vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ github.repository }}:test
           severity: CRITICAL,HIGH
