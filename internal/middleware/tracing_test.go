@@ -16,7 +16,7 @@ func TestTracingMiddleware(t *testing.T) {
 	// Setup observability
 	tp, err := observability.NewTracerProvider("test-service", "1.0.0")
 	require.NoError(t, err)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	metrics := observability.NewMetricsWithRegistry(prometheus.NewRegistry())
 	spanProcessor := observability.NewSpanProcessor()
@@ -69,7 +69,7 @@ func TestBusinessMetricsMiddleware(t *testing.T) {
 func TestTracingResponseWriter(t *testing.T) {
 	tp, err := observability.NewTracerProvider("test-service", "1.0.0")
 	require.NoError(t, err)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	metrics := observability.NewMetricsWithRegistry(prometheus.NewRegistry())
 	spanProcessor := observability.NewSpanProcessor()

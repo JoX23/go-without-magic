@@ -40,7 +40,7 @@ func TestSpanProcessor(t *testing.T) {
 
 	tp, err := NewTracerProvider("test-service", "1.0.0")
 	require.NoError(t, err)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	tracer := tp.Tracer("test")
 	ctx, span := StartSpan(context.Background(), tracer, "test-span")

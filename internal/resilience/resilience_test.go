@@ -27,8 +27,8 @@ func TestCircuitBreakerOpen(t *testing.T) {
 	fn := func() error { return errors.New("error") }
 
 	// Trigger failures
-	cb.Call(fn)
-	cb.Call(fn)
+	_ = cb.Call(fn)
+	_ = cb.Call(fn)
 
 	// Should be open now
 	err := cb.Call(fn)

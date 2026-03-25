@@ -97,7 +97,7 @@ func (cb *CircuitBreaker) HTTPMiddleware() func(http.Handler) http.Handler {
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusServiceUnavailable)
-				w.Write([]byte(`{"error":"service unavailable"}`))
+				_, _ = w.Write([]byte(`{"error":"service unavailable"}`))
 			}
 		})
 	}
@@ -144,7 +144,7 @@ func (rl *RateLimiter) HTTPMiddleware() func(http.Handler) http.Handler {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Retry-After", "1")
 				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte(`{"error":"rate limit exceeded"}`))
+				_, _ = w.Write([]byte(`{"error":"rate limit exceeded"}`))
 				return
 			}
 

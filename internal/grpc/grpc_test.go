@@ -82,7 +82,7 @@ func TestGRPCService_Integration(t *testing.T) {
 	}
 	defer lis.Close()
 
-	go grpcServer.Serve(lis)
+	go func() { _ = grpcServer.Serve(lis) }()
 	defer grpcServer.Stop()
 
 	conn, err := grpcpkg.Dial(lis.Addr().String(), grpcpkg.WithTransportCredentials(insecure.NewCredentials()))

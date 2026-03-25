@@ -49,7 +49,7 @@ func WriteHTTP(w http.ResponseWriter, err *AppError) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(err.Status)
-	json.NewEncoder(w).Encode(err)
+	_ = json.NewEncoder(w).Encode(err)
 }
 
 // DomainError define errores de dominio con código HTTP propio.

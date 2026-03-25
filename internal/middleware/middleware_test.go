@@ -30,7 +30,7 @@ func TestRequestIDMiddleware(t *testing.T) {
 
 func TestLoggingMiddleware(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -50,7 +50,7 @@ func TestLoggingMiddleware(t *testing.T) {
 
 func TestRecoveryPanic(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("test panic")

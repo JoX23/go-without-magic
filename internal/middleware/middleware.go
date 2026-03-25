@@ -11,6 +11,10 @@ import (
 	"go.uber.org/zap"
 )
 
+type contextKey string
+
+const requestIDKey contextKey = "request_id"
+
 // Middleware es una función que envuelve un http.Handler.
 // Permite composición flexible de comportamientos trasversales.
 type Middleware func(http.Handler) http.Handler
@@ -36,7 +40,7 @@ func RequestID() Middleware {
 			}
 
 			w.Header().Set("X-Request-ID", requestID)
-			ctx := context.WithValue(r.Context(), "request_id", requestID)
+			ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -76,7 +80,7 @@ func RecoveryPanic(logger *zap.Logger) Middleware {
 
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(`{"error":"internal server error"}`))
+					_, _ = w.Write([]byte(`{"error":"internal server error"}`))
 				}
 			}()
 

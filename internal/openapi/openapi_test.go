@@ -2,7 +2,7 @@ package openapi
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -61,7 +61,7 @@ func TestOpenAPI_Handler(t *testing.T) {
 		t.Fatalf("unexpected content type: %s", res.Header.Get("Content-Type"))
 	}
 
-	_, err := ioutil.ReadAll(res.Body)
+	_, err := io.ReadAll(res.Body)
 	if err != nil {
 		t.Fatalf("read body failed: %v", err)
 	}
