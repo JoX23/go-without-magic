@@ -72,12 +72,16 @@ jobs:
       - name: Build binary
         run: make build
 
+      - name: Set image name
+        id: image
+        run: echo "ref=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):test" >> $GITHUB_OUTPUT
+
       - name: Build Docker image
-        run: docker build -f deployments/docker/Dockerfile -t ${{ github.repository }}:test .
+        run: docker build -f deployments/docker/Dockerfile -t ${{ steps.image.outputs.ref }} .
 
       - name: Scan image for vulnerabilities (Trivy)
         uses: aquasecurity/trivy-action@v0.35.0
         with:
-          image-ref: ${{ github.repository }}:test
+          image-ref: ${{ steps.image.outputs.ref }}
           severity: CRITICAL,HIGH
           exit-code: 1
