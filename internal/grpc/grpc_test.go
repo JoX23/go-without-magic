@@ -85,7 +85,7 @@ func TestGRPCService_Integration(t *testing.T) {
 	go func() { _ = grpcServer.Serve(lis) }()
 	defer grpcServer.Stop()
 
-	conn, err := grpcpkg.Dial(lis.Addr().String(), grpcpkg.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpcpkg.NewClient(lis.Addr().String(), grpcpkg.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("failed to dial grpc server: %v", err)
 	}
