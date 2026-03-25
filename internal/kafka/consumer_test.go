@@ -13,22 +13,6 @@ import (
 	"github.com/JoX23/go-without-magic/internal/kafka"
 )
 
-// mockProducer captura las llamadas a Produce para inspección en tests.
-type mockProducer struct {
-	produced []*kgo.Record
-}
-
-func (m *mockProducer) Produce(_ context.Context, rec *kgo.Record) error {
-	m.produced = append(m.produced, rec)
-	return nil
-}
-
-// retryableConsumer expone processWithRetry para prueba directa a través del comportamiento
-// observable: un handler que falla N veces seguidas debe enviar al DLT.
-//
-// Para no exponer processWithRetry (privado), testeamos el comportamiento de la lógica
-// de disposición de forma indirecta a través de DispositionFor + WithCircuitBreaker.
-
 func TestDispositionFor_SkipOnDuplicate(t *testing.T) {
 	calls := 0
 	handler := kafka.MessageHandlerFunc(func(_ context.Context, _ *kgo.Record) error {
