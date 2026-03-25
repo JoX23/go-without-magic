@@ -27,6 +27,7 @@ func List() {
 	fmt.Printf("  %-15s  %s\n", "PROFILE", "CAPAS GENERADAS")
 	fmt.Println("  " + repeat("─", 60))
 	fmt.Printf("  %-15s  %s\n", "full (default)", "domain, service, http, memory, postgres, grpc")
+	fmt.Printf("  %-15s  %s\n", "full-async", "domain, service, http, memory, postgres, grpc, kafka")
 	fmt.Printf("  %-15s  %s\n", "api", "domain, service, http, memory")
 	fmt.Printf("  %-15s  %s\n", "domain-only", "domain")
 	fmt.Printf("  %-15s  %s\n", "no-grpc", "domain, service, http, memory, postgres")

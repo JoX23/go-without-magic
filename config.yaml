@@ -24,3 +24,18 @@ observability:
   metrics:
     enabled: true
     path: "/metrics"
+
+# Kafka: transporte opt-in. Dejar brokers vacío para desactivarlo.
+# Activar: APP_KAFKA_BROKERS=localhost:9092 o docker --profile kafka
+kafka:
+  brokers: []
+  consumer_group: "go-without-magic"
+  topics:
+    - "user.commands.create"
+  dlt_suffix: ".dlt"
+  max_retries: 3
+  session_timeout: "10s"
+  rebalance_timeout: "60s"
+  circuit_breaker:
+    max_fails: 5
+    timeout: "30s"

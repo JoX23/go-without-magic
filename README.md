@@ -10,7 +10,7 @@
 [![Race Detector](https://img.shields.io/badge/race%20detector-clean-brightgreen)](#concurrency-safety)
 [![Architecture](https://img.shields.io/badge/architecture-clean-blue)](#architecture)
 
-[Quick Start](#-quick-start) · [Code Generator](#-code-generator-new) · [Features](#-whats-inside) · [Comparison](#-vs-other-frameworks)
+[Quick Start](#-quick-start) · [Code Generator](#-code-generator-new) · [Kafka](#-kafka-opt-in-transport) · [Features](#-whats-inside) · [Comparison](#-vs-other-frameworks)
 
 </div>
 
@@ -50,7 +50,8 @@ No DSLs. No annotations. No hidden layers. Just Go.
 | **Middleware** | Cross-cutting concerns | Composable, GoKit-inspired |
 | **Observability** | Traces, metrics, logs | OpenTelemetry + Prometheus + Zap |
 | **Resilience** | Circuit breaker + rate limiter | Go-Zero inspired, zero dependencies |
-| **Code Generator** | Scaffolds new entities | YAML → 9 files, 0 boilerplate |
+| **Kafka** | Event-driven transport (opt-in) | Consumer group, DLT, OTel tracing, Prometheus metrics |
+| **Code Generator** | Scaffolds new entities | YAML → up to 10 files, 0 boilerplate |
 
 ### Full feature checklist
 
@@ -66,8 +67,9 @@ No DSLs. No annotations. No hidden layers. Just Go.
 - [x] Input validation with consistent error mapping
 - [x] OpenAPI spec generation
 - [x] Optional gRPC support with error code mapping
-- [x] Graceful shutdown with cleanup
-- [x] Docker + Docker Compose ready
+- [x] **Kafka transport (opt-in)** — consumer group, DLT, circuit breaker, OTel tracing, Prometheus metrics
+- [x] Graceful shutdown with cleanup (LIFO: Kafka → gRPC → HTTP)
+- [x] Docker + Docker Compose ready (Kafka KRaft, no ZooKeeper)
 - [x] GitHub Actions CI/CD
 - [x] Race-detector clean (`go test -race ./...` ✅)
 - [x] **Code generator** — new entity in seconds
@@ -185,9 +187,99 @@ go run ./tools/codegen/ list
 | Profile | Generates | Use when |
 |---|---|---|
 | `full` *(default)* | All 9 layers | New entity from scratch |
+| `full-async` | All 9 layers + Kafka handler | Event-driven service |
 | `api` | Domain + service + HTTP + memory | HTTP-only, no gRPC/Postgres |
 | `domain-only` | Domain (entity + errors + interface) | Design the model first |
 | `no-grpc` | Everything except gRPC | Pure HTTP service |
+
+---
+
+## Kafka (opt-in transport)
+
+> **Zero changes to your domain or service layer.** Kafka is just another transport adapter at the boundary.
+
+Activate by setting brokers in `config.yaml` or via environment variable:
+
+```bash
+# config.yaml
+kafka:
+  brokers: ["localhost:9092"]
+  consumer_group: "go-without-magic"
+  topics: ["user.commands.create"]
+
+# or via env var
+APP_KAFKA_BROKERS=localhost:9092 make run
+
+# or full local stack (Kafka KRaft + kafka-ui)
+make kafka-up
+```
+
+When `brokers` is empty (default), Kafka is completely disabled — HTTP and gRPC are unaffected.
+
+### How it works
+
+```
+Kafka topic → Consumer poll loop
+                   ↓
+            MessageHandler.Handle(ctx, msg)   ← same service, same domain
+                   ↓
+            DispositionFor(err):
+              - nil        → commit offset (success)
+              - Skip       → commit offset (duplicate, already processed)
+              - Retry      → retry up to max_retries, then DLT
+              - DLT        → publish to {topic}.dlt with x-dlt-error header
+```
+
+### Interceptor chain
+
+```go
+WithPanic(logger,
+    WithCircuitBreaker(cb,      // reuses resilience.CircuitBreaker unchanged
+        WithTracing(tracer,     // W3C TraceContext from message headers
+            yourHandler)))
+```
+
+### Error disposition
+
+| Error | Disposition | Reason |
+|---|---|---|
+| `ErrInvalidMessage` (bad JSON) | DLT | Retry won't fix a malformed payload |
+| `ErrUserDuplicated` | Skip | Already processed — at-least-once idempotency |
+| `ErrInvalidEmail / Name` | DLT | Validation failures are terminal |
+| `ErrCircuitBreakerOpen` | Retry | Downstream temporarily unavailable |
+| Any other error | Retry → DLT | After `max_retries` exhausted |
+
+### Emitting domain events
+
+```go
+// After a successful service call, emit an event:
+userProducer := kafkahandler.NewUserEventProducer(producer, logger)
+userProducer.EmitUserCreated(ctx, user) // → "user.events.created"
+```
+
+### Add Kafka to a new entity
+
+```bash
+go run ./tools/codegen/ generate --schema order.yaml --profile full-async
+# Generates the Kafka handler + prints the main.go wiring hint
+```
+
+### Prometheus metrics
+
+All prefixed `kafka_*`:
+- `kafka_messages_processed_total{topic, result}` — success / skipped / dlt / fetch_error
+- `kafka_message_retries_total{topic}`
+- `kafka_messages_produced_total{topic}`
+- `kafka_produce_errors_total{topic}`
+- `kafka_consumer_lag{topic, partition}`
+- `kafka_message_processing_duration_seconds{topic}`
+
+### Integration tests
+
+```bash
+make kafka-up
+go test -tags=integration -race ./internal/kafka/...
+```
 
 ---
 
@@ -197,9 +289,9 @@ go run ./tools/codegen/ list
 
 ```
 ┌─────────────────────────────────────────┐
-│              HTTP / gRPC                │  ← Transport layer
+│       HTTP / gRPC / Kafka consumer      │  ← Transport layer (opt-in)
 ├─────────────────────────────────────────┤
-│               Middleware                │  ← Cross-cutting concerns
+│        Middleware / Interceptors        │  ← Cross-cutting concerns
 ├─────────────────────────────────────────┤
 │               Handler                  │  ← Translates transport ↔ domain
 ├─────────────────────────────────────────┤
@@ -242,12 +334,14 @@ Compare that to frameworks where the startup code is a wall of decorators, regis
 │   ├── resilience/       # Circuit breaker, rate limiter
 │   ├── validator/        # Input validation + error mapping
 │   ├── grpc/             # Optional gRPC server
+│   ├── kafka/            # Opt-in Kafka transport (consumer, producer, interceptors)
+│   │   └── handler/      # Business-layer Kafka handlers + event producers
 │   └── openapi/          # OpenAPI spec generation
 ├── tools/codegen/        # Code generator
-│   ├── templates/        # Go templates for each layer
+│   ├── templates/        # Go templates for each layer (incl. kafka)
 │   ├── schema/           # YAML schema parser + validator
 │   └── examples/         # Example entity schemas
-└── deployments/docker/   # Dockerfile + Compose
+└── deployments/docker/   # Dockerfile + Compose + kafka-compose.yml
 ```
 
 ---
@@ -353,6 +447,8 @@ make test-cover   # Generate coverage.html
 make lint         # golangci-lint
 make docker-build # Build Docker image
 make tidy         # Clean and verify dependencies
+make kafka-up     # Start full stack with Kafka KRaft + kafka-ui (port 8081)
+make kafka-down   # Stop Kafka stack
 ```
 
 ---
@@ -368,6 +464,7 @@ make tidy         # Clean and verify dependencies
 | **Code generation** | ✅ (your architecture) | ❌ | ❌ | ✅ (framework's architecture) |
 | **Observability** | ✅ Full | ⚠️ Minimal | ✅ Full | ✅ Full |
 | **gRPC** | ✅ Optional | ✅ Pluggable | ✅ Built-in | ✅ Built-in |
+| **Kafka** | ✅ Opt-in | ❌ | ⚠️ Plugin | ✅ Built-in |
 | **Resilience** | ✅ Built-in | ✅ Pluggable | ✅ Built-in | ✅ Built-in |
 | **Learning curve** | Low | Medium | Medium-High | Low→High |
 | **Debuggability** | Very high | High | Medium | Low (generated code) |
@@ -402,6 +499,7 @@ Carefully chosen — every dependency earns its place:
 | `go.opentelemetry.io/otel` | Distributed tracing standard |
 | `github.com/prometheus/client_golang` | Metrics |
 | `google.golang.org/grpc` | Optional gRPC transport |
+| `github.com/twmb/franz-go` | Kafka transport (pure Go, no CGO) |
 | `gopkg.in/yaml.v3` | Schema parsing (codegen only) |
 
 No ORMs. No DI containers. No reflection magic.

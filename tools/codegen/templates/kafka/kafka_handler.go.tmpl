@@ -1,0 +1,55 @@
+package kafkahandler
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/twmb/franz-go/pkg/kgo"
+	"go.uber.org/zap"
+
+	"{{.Module}}/internal/kafka"
+	"{{.Module}}/internal/service"
+)
+
+// {{.Entity.Name}}KafkaHandler enruta mensajes de los topics {{.Entity.NameLower}}.* hacia {{.Entity.Name}}Service.
+type {{.Entity.Name}}KafkaHandler struct {
+	svc    *service.{{.Entity.Name}}Service
+	logger *zap.Logger
+}
+
+func New{{.Entity.Name}}KafkaHandler(svc *service.{{.Entity.Name}}Service, logger *zap.Logger) *{{.Entity.Name}}KafkaHandler {
+	return &{{.Entity.Name}}KafkaHandler{svc: svc, logger: logger}
+}
+
+// Register devuelve el TopicHandlerMap para este handler.
+// Se llama en main.go y se fusiona con el mapa global antes de crear el Consumer.
+func (h *{{.Entity.Name}}KafkaHandler) Register() kafka.TopicHandlerMap {
+	return kafka.TopicHandlerMap{
+		"{{.Entity.NameLower}}.commands.create": kafka.MessageHandlerFunc(h.handleCreate),
+	}
+}
+
+type create{{.Entity.Name}}Command struct {
+{{- range .Entity.ConstructorFields}}
+	{{.Name}} {{.GoType}} `json:"{{.NameSnake}}"`
+{{- end}}
+}
+
+func (h *{{.Entity.Name}}KafkaHandler) handleCreate(ctx context.Context, msg *kgo.Record) error {
+	var cmd create{{.Entity.Name}}Command
+	if err := json.Unmarshal(msg.Value, &cmd); err != nil {
+		// Payload mal formado → DLT inmediato (sin reintentos).
+		return fmt.Errorf("%w: %v", kafka.ErrInvalidMessage, err)
+	}
+
+	e, err := h.svc.Create{{.Entity.Name}}(ctx{{range .Entity.ConstructorFields}}, cmd.{{.Name}}{{end}})
+	if err != nil {
+		return err
+	}
+
+	h.logger.Info("{{.Entity.NameLower}} created via kafka",
+		zap.String("id", e.ID.String()),
+		zap.String("topic", msg.Topic))
+	return nil
+}

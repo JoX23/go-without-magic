@@ -13,6 +13,8 @@ make lint         # golangci-lint (3m timeout)
 make tidy         # go mod tidy + verify
 make docker-build # Build multi-stage Docker image
 docker-compose up # Full stack: app + PostgreSQL (ports 8080/9090/5432)
+make kafka-up     # Full stack + Kafka KRaft + kafka-ui (port 8081)
+make kafka-down   # Stop Kafka stack
 ```
 
 **Single test:**
@@ -22,9 +24,16 @@ go test -race -run TestFunctionName ./internal/service/...
 
 **Code generation (new entity from YAML schema):**
 ```bash
-go run ./tools/codegen/ generate --schema product.yaml  # Generate 9 files
-go run ./tools/codegen/ validate --schema product.yaml  # Validate only
-go run ./tools/codegen/ list                            # Show supported types/profiles
+go run ./tools/codegen/ generate --schema product.yaml             # Generate 9 files (full profile)
+go run ./tools/codegen/ generate --schema product.yaml --profile full-async  # + Kafka handler
+go run ./tools/codegen/ validate --schema product.yaml             # Validate only
+go run ./tools/codegen/ list                                        # Show supported types/profiles
+```
+
+**Integration tests (requires Docker or running Kafka):**
+```bash
+make kafka-up
+go test -tags=integration -race ./internal/kafka/...
 ```
 
 ## Architecture
@@ -32,11 +41,11 @@ go run ./tools/codegen/ list                            # Show supported types/p
 This project is a production-ready microservice template following **Clean Architecture** with an explicit dependency rule: outer layers import inner, never the reverse.
 
 ```
-Transport (HTTP / gRPC)
+Transport (HTTP / gRPC / Kafka consumer)
     ↓
-Middleware (cross-cutting concerns)
+Middleware / Interceptors (cross-cutting concerns)
     ↓
-Handler (HTTP ↔ domain translation)
+Handler (transport ↔ domain translation)
     ↓
 Service (business logic orchestration)
     ↓
@@ -62,7 +71,9 @@ Repository (persistence: memory | postgres)
 | `internal/config` | Viper-backed config: `config.yaml` + `APP_*` env var overrides. |
 | `pkg/health` | `/healthz` handler. |
 | `pkg/shutdown` | Graceful shutdown with signal handling, timeout, and `sync.Once` idempotency. |
-| `tools/codegen` | YAML schema → 9 generated files (domain, service, handler, memory repo, postgres repo, gRPC). |
+| `internal/kafka` | Kafka transport (opt-in). Consumer loop, producer, interceptors (WithPanic, WithTracing, WithCircuitBreaker), DLT routing, Prometheus metrics. Activated when `kafka.brokers` is non-empty. |
+| `internal/kafka/handler` | Business-layer Kafka handlers (`UserKafkaHandler`) and event producers (`UserEventProducer`). |
+| `tools/codegen` | YAML schema → up to 10 generated files (domain, service, handler, memory repo, postgres repo, gRPC, kafka handler). Profiles: `full`, `full-async`, `api`, `domain-only`, `no-grpc`. |
 
 ### Error handling pattern
 
@@ -80,6 +91,17 @@ Domain errors are defined in `internal/domain/errors.go`. Handlers map them to H
 ### gRPC
 
 Optional gRPC server lives in `internal/grpc/`. Proto files are in `internal/grpc/proto/`. The server uses a unary interceptor pattern mirroring the HTTP middleware chain.
+
+### Kafka (opt-in transport)
+
+Kafka lives in `internal/kafka/`. Activated by setting `kafka.brokers` in `config.yaml` or via `APP_KAFKA_BROKERS=host:9092`.
+
+- **Consumer:** poll loop with manual offset commit (at-least-once), retry up to `kafka.max_retries`, then Dead Letter Topic (`{topic}{dlt_suffix}`).
+- **Error disposition:** `DispositionFor(err)` maps domain errors → Retry / DLT / Skip. `ErrUserDuplicated` → Skip (idempotent). Parse errors (`ErrInvalidMessage`) → DLT immediately.
+- **Interceptors:** `WithPanic` → `WithCircuitBreaker` → `WithTracing` wrap each `MessageHandler`. Reuses `resilience.CircuitBreaker` unchanged.
+- **Shutdown:** `KafkaConsumerAdapter` implements `shutdown.Server`; registered LIFO before gRPC and HTTP so ingestion stops first.
+- **Metrics:** 6 Prometheus metrics under `kafka_*` prefix (processed, retries, produced, errors, consumer lag, processing duration).
+- **Local stack:** `make kafka-up` starts Kafka KRaft (no ZooKeeper) + kafka-ui on port 8081.
 
 ### Observability
 

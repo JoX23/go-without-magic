@@ -19,6 +19,7 @@ type GenerateFlags struct {
 	MemoryRepository   *bool `yaml:"memory_repository"`
 	PostgresRepository *bool `yaml:"postgres_repository"`
 	GRPC               *bool `yaml:"grpc"`
+	KafkaHandler       *bool `yaml:"kafka_handler"`
 }
 
 // Field describe un campo de la entidad.
@@ -42,6 +43,7 @@ const (
 	ProfileAPI        = "api"
 	ProfileDomainOnly = "domain-only"
 	ProfileNoGRPC     = "no-grpc"
+	ProfileFullAsync  = "full-async"
 )
 
 // ResolveGenerate resuelve las flags de generación según el profile y
@@ -75,6 +77,9 @@ func (s *Schema) ResolveGenerate() ResolvedGenerate {
 	if g.GRPC != nil {
 		r.GRPC = *g.GRPC
 	}
+	if g.KafkaHandler != nil {
+		r.KafkaHandler = *g.KafkaHandler
+	}
 
 	return r
 }
@@ -87,6 +92,7 @@ type ResolvedGenerate struct {
 	MemoryRepository   bool
 	PostgresRepository bool
 	GRPC               bool
+	KafkaHandler       bool
 }
 
 func baseForProfile(profile string) ResolvedGenerate {
@@ -102,6 +108,12 @@ func baseForProfile(profile string) ResolvedGenerate {
 		return ResolvedGenerate{
 			Domain: true, Service: true, HTTPHandler: true,
 			MemoryRepository: true, PostgresRepository: true,
+		}
+	case ProfileFullAsync:
+		return ResolvedGenerate{
+			Domain: true, Service: true, HTTPHandler: true,
+			MemoryRepository: true, PostgresRepository: true, GRPC: true,
+			KafkaHandler: true,
 		}
 	default: // full
 		return ResolvedGenerate{

@@ -1,4 +1,4 @@
-.PHONY: run build test test-cover lint tidy docker-build clean help
+.PHONY: run build test test-cover lint tidy docker-build kafka-up kafka-down clean help
 
 # ── Variables ─────────────────────────────────────────────────────────────
 SERVICE   := go-without-magic
@@ -45,6 +45,14 @@ docker-build:
 		-f deployments/docker/Dockerfile \
 		-t $(SERVICE):latest \
 		.
+
+## kafka-up: Levanta el stack completo con Kafka KRaft + kafka-ui (puerto 8081)
+kafka-up:
+	docker-compose -f docker-compose.yml -f deployments/docker/kafka-compose.yml --profile kafka up -d
+
+## kafka-down: Detiene y elimina los contenedores Kafka
+kafka-down:
+	docker-compose -f docker-compose.yml -f deployments/docker/kafka-compose.yml --profile kafka down
 
 ## clean: Elimina artefactos generados
 clean:

@@ -73,6 +73,10 @@ func Plan(data *TemplateData, rootDir string) []OutputFile {
 		addProto("grpc/proto.proto.tmpl", fmt.Sprintf("internal/grpc/proto/%s.proto", e.NameLower))
 		add("grpc/grpc_service.go.tmpl", fmt.Sprintf("internal/grpc/%s_service.go", e.NameLower))
 	}
+	if g.KafkaHandler {
+		add("kafka/kafka_handler.go.tmpl", fmt.Sprintf("internal/kafka/handler/%s_handler.go", e.NameLower))
+		addHint("hints/kafka_wiring.txt.tmpl")
+	}
 
 	addHint("hints/main_wiring.txt.tmpl")
 

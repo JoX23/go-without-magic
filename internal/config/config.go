@@ -15,6 +15,7 @@ type Config struct {
 	Server        ServerConfig        `mapstructure:"server"`
 	Database      DatabaseConfig      `mapstructure:"database"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
+	Kafka         KafkaConfig         `mapstructure:"kafka"`
 }
 
 type ServiceConfig struct {
@@ -52,6 +53,24 @@ type TracingConfig struct {
 type MetricsConfig struct {
 	Enabled bool   `mapstructure:"enabled"`
 	Path    string `mapstructure:"path"` // e.g., "/metrics"
+}
+
+// KafkaConfig configura el transporte Kafka (opt-in).
+// Si Brokers está vacío, el consumer/producer no se inicializan.
+type KafkaConfig struct {
+	Brokers          []string      `mapstructure:"brokers"`
+	ConsumerGroup    string        `mapstructure:"consumer_group"`
+	Topics           []string      `mapstructure:"topics"`
+	DLTSuffix        string        `mapstructure:"dlt_suffix"`
+	MaxRetries       int           `mapstructure:"max_retries"`
+	SessionTimeout   time.Duration `mapstructure:"session_timeout"`
+	RebalanceTimeout time.Duration `mapstructure:"rebalance_timeout"`
+	CircuitBreaker   CBConfig      `mapstructure:"circuit_breaker"`
+}
+
+type CBConfig struct {
+	MaxFails int           `mapstructure:"max_fails"`
+	Timeout  time.Duration `mapstructure:"timeout"`
 }
 
 // Load carga configuración desde archivo YAML + variables de entorno.
@@ -114,4 +133,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.max_open_conns", 25)
 	v.SetDefault("database.max_idle_conns", 5)
 	v.SetDefault("observability.log_level", "info")
+
+	// Kafka: brokers vacío = transporte desactivado (opt-in)
+	v.SetDefault("kafka.consumer_group", "go-without-magic")
+	v.SetDefault("kafka.dlt_suffix", ".dlt")
+	v.SetDefault("kafka.max_retries", 3)
+	v.SetDefault("kafka.session_timeout", 10*time.Second)
+	v.SetDefault("kafka.rebalance_timeout", 60*time.Second)
+	v.SetDefault("kafka.circuit_breaker.max_fails", 5)
+	v.SetDefault("kafka.circuit_breaker.timeout", 30*time.Second)
 }

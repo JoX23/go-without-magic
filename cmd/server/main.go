@@ -15,9 +15,12 @@ import (
 	grpcservice "github.com/JoX23/go-without-magic/internal/grpc"
 	"github.com/JoX23/go-without-magic/internal/grpc/pb"
 	httphandler "github.com/JoX23/go-without-magic/internal/handler/http"
+	"github.com/JoX23/go-without-magic/internal/kafka"
+	kafkahandler "github.com/JoX23/go-without-magic/internal/kafka/handler"
 	"github.com/JoX23/go-without-magic/internal/middleware"
 	"github.com/JoX23/go-without-magic/internal/observability"
 	"github.com/JoX23/go-without-magic/internal/repository/memory"
+	"github.com/JoX23/go-without-magic/internal/resilience"
 	"github.com/JoX23/go-without-magic/internal/service"
 	"github.com/JoX23/go-without-magic/pkg/health"
 	"github.com/JoX23/go-without-magic/pkg/shutdown"
@@ -156,6 +159,41 @@ func run() error {
 		serverErrors <- httpServer.Serve(httpLis)
 	}()
 
+	// ── 8b. Kafka Consumer + Producer (opt-in) ────────────────────────
+	var kafkaAdapter *kafka.KafkaConsumerAdapter
+	if len(cfg.Kafka.Brokers) > 0 {
+		kafkaMetrics := kafka.NewKafkaMetrics()
+
+		producer, err := kafka.NewProducer(cfg.Kafka, kafkaMetrics, logger)
+		if err != nil {
+			return fmt.Errorf("creating kafka producer: %w", err)
+		}
+
+		cb := resilience.NewCircuitBreaker(
+			cfg.Kafka.CircuitBreaker.MaxFails,
+			cfg.Kafka.CircuitBreaker.Timeout,
+		)
+
+		handlers := kafka.TopicHandlerMap{}
+		userKafkaHdlr := kafkahandler.NewUserKafkaHandler(userSvc, logger)
+		for topic, h := range userKafkaHdlr.Register() {
+			wrapped := kafka.WithPanic(logger, kafka.WithCircuitBreaker(cb, h))
+			if cfg.Observability.Tracing.Enabled {
+				wrapped = kafka.WithTracing(tracerProvider.Tracer("kafka"), wrapped)
+			}
+			handlers[topic] = wrapped
+		}
+
+		consumer, err := kafka.NewConsumer(cfg.Kafka, handlers, producer, kafkaMetrics, logger)
+		if err != nil {
+			return fmt.Errorf("creating kafka consumer: %w", err)
+		}
+		consumer.Start(context.Background())
+
+		kafkaAdapter = &kafka.KafkaConsumerAdapter{Consumer: consumer}
+		logger.Info("kafka consumer started", zap.Strings("brokers", cfg.Kafka.Brokers))
+	}
+
 	var grpcServer *grpcpkg.Server
 	if cfg.Server.GRPCPort > 0 {
 		grpcAddr := fmt.Sprintf(":%d", cfg.Server.GRPCPort)
@@ -173,11 +211,15 @@ func run() error {
 		}()
 	}
 
-	// ── 9. Graceful Shutdown ───────────────────────────────────────────
+	// ── 9. Graceful Shutdown ─────────────────────────────────────────
+	// Orden LIFO: kafka → grpc → http (parar ingesta antes que workers)
 	shutdownMgr := shutdown.NewManager(cfg.Server.ShutdownTimeout, logger).
 		Register("http", httpServer)
 	if grpcServer != nil {
 		shutdownMgr.Register("grpc", &grpcservice.GRPCServerAdapter{Server: grpcServer})
+	}
+	if kafkaAdapter != nil {
+		shutdownMgr.Register("kafka", kafkaAdapter)
 	}
 
 	// Iniciar el signal handler en goroutine (no bloquea)

@@ -1,0 +1,26 @@
+
+────────────────────────────────────────────────────────────
+  HINT — Agrega esto en cmd/server/main.go
+  (dentro del bloque if len(cfg.Kafka.Brokers) > 0)
+────────────────────────────────────────────────────────────
+
+// Import adicional:
+kafkahandler "{{.Module}}/internal/kafka/handler"
+
+// Wiring del handler (después de crear el CircuitBreaker y el TopicHandlerMap):
+{{.Entity.NameLower}}KafkaHdlr := kafkahandler.New{{.Entity.Name}}KafkaHandler({{.Entity.NameLower}}Svc, logger)
+for topic, h := range {{.Entity.NameLower}}KafkaHdlr.Register() {
+    handlers[topic] = kafka.WithPanic(logger, kafka.WithCircuitBreaker(cb, h))
+}
+
+────────────────────────────────────────────────────────────
+  HINT — Agrega esto a internal/kafka/error_codes.go
+  en DispositionFor() si la entidad tiene errores de dominio
+  que deben mapearse a DLT o Skip
+────────────────────────────────────────────────────────────
+
+case errors.Is(err, domain.Err{{.Entity.Name}}Duplicated):
+    return DispositionSkip
+case errors.Is(err, domain.Err{{.Entity.Name}}NotFound):
+    return DispositionRetry
+────────────────────────────────────────────────────────────
